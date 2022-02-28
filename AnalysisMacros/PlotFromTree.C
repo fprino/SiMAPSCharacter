@@ -1,0 +1,560 @@
+#include <TFile.h>
+#include <TObjArray.h>
+#include <TObjString.h>
+#include <TH1.h>
+#include <TH2.h>
+#include <TAxis.h>
+#include <TLine.h>
+#include <TLegend.h>
+#include <TLegendEntry.h>
+#include <TLatex.h>
+#include <TPaveStats.h>
+#include <TF1.h>
+#include <TProfile.h>
+#include <TTree.h>
+#include <TCanvas.h>
+
+const int maxFiles=5;
+TH1F* hFallTime[maxFiles];
+TH1F* hAmpl[maxFiles];
+TH1F* hRecoTime[maxFiles];
+TH2F* hFallTimeVsAmpl[maxFiles];
+TProfile* profFallTime[maxFiles];
+TH1F* hTotAmpl[maxFiles];
+TH1F* hCluSiz[maxFiles];
+TH1F* hCluTyp[maxFiles];
+TH2F* hAmplCh1VsCluSiz[maxFiles];
+TH1F* hFallTimeCh1CluSiz1[maxFiles];
+TProfile* profAmplCh1[maxFiles];
+TH1F* hAmplCh1FastResp[maxFiles];
+TH1F* hAmplCh2FastResp[maxFiles];
+TH1F* hAmplCh3FastResp[maxFiles];
+TH1F* hAmplCh4FastResp[maxFiles];
+TH1F* hCluSizFastResp[maxFiles];
+TH1F* hDeltaTime12[maxFiles];
+TH1F* hDeltaTime13[maxFiles];
+TH1F* hDeltaTime14[maxFiles];
+TH1F* hDeltaTime21[maxFiles];
+TH1F* hDeltaTime31[maxFiles];
+TH1F* hDeltaTime41[maxFiles];
+
+
+void FormatHistos(TObjArray* arrHisto, int theColor){
+  int nHist=arrHisto->GetEntries();
+  for(int jh=0; jh<nHist; jh++){
+    TString cname=((TObject*)arrHisto->At(jh))->ClassName();
+    if(cname.Contains("TH1")){
+      TH1* h=(TH1*)arrHisto->At(jh);
+      h->SetLineWidth(2);
+      h->SetLineColor(theColor);
+    }else if(cname.Contains("TH2")){
+      TH2* h=(TH2*)arrHisto->At(jh);
+      h->SetLineColor(theColor);
+    }    
+  }
+}
+
+void FillHistosFromTree(TFile* f, int jfil){
+  
+  int ev,chan;
+  double basel,mincnt,ampl,t10,t90,falltime,recotime;
+  TTree* tree=(TTree*)f->Get("treeParams");
+  tree->SetBranchAddress("Event",&ev);
+  tree->SetBranchAddress("BaselineCh1",&basel);
+  tree->SetBranchAddress("MinLevelCh1",&mincnt);
+  tree->SetBranchAddress("t10Ch1",&t10);
+  tree->SetBranchAddress("t90Ch1",&t90);
+  double t50Vec[4];
+  tree->SetBranchAddress("t50Ch1",&t50Vec[0]);
+  tree->SetBranchAddress("t50Ch2",&t50Vec[1]);
+  tree->SetBranchAddress("t50Ch3",&t50Vec[2]);
+  tree->SetBranchAddress("t50Ch4",&t50Vec[3]);
+  tree->SetBranchAddress("FallTimeCh1",&falltime);
+  tree->SetBranchAddress("RecovTimeExpoCh1",&recotime);
+  double amplVec[4];
+  tree->SetBranchAddress("SignalAmplCh1",&amplVec[0]);
+  tree->SetBranchAddress("SignalAmplCh2",&amplVec[1]);
+  tree->SetBranchAddress("SignalAmplCh3",&amplVec[2]);
+  tree->SetBranchAddress("SignalAmplCh4",&amplVec[3]);
+
+  for(int ient=0; ient<tree->GetEntriesFast(); ient++){
+    tree->GetEvent(ient);
+    if(amplVec[0]>=0){
+      hFallTime[jfil]->Fill(falltime/1000.);
+      hAmpl[jfil]->Fill(amplVec[0]*1000.);
+      hRecoTime[jfil]->Fill(recotime/1e6);
+      hFallTimeVsAmpl[jfil]->Fill(amplVec[0]*1000.,falltime/1000.);
+    }
+    int clusiz=0;
+    int clutyp=0;
+    double totampl=0;
+    for(int k=0; k<4; k++){
+      if(amplVec[k]>0){
+  	clutyp+=1<<k;
+  	clusiz+=1;
+  	totampl+=amplVec[k]*1000;
+      }
+    }
+    hTotAmpl[jfil]->Fill(totampl);
+    hCluSiz[jfil]->Fill(clusiz);
+    hCluTyp[jfil]->Fill(clutyp);
+    hAmplCh1VsCluSiz[jfil]->Fill(clusiz,amplVec[0]*1000);
+    if(amplVec[0]>0 && clusiz==1) hFallTimeCh1CluSiz1[jfil]->Fill(falltime/1000.);
+    if(amplVec[0]>0 && falltime<400.){
+      hAmplCh1FastResp[jfil]->Fill(amplVec[0]*1000.);
+      hCluSizFastResp[jfil]->Fill(clusiz);
+      hAmplCh2FastResp[jfil]->Fill(TMath::Max(0.,amplVec[1]*1000.));
+      hAmplCh3FastResp[jfil]->Fill(TMath::Max(0.,amplVec[2]*1000.));
+      hAmplCh4FastResp[jfil]->Fill(TMath::Max(0.,amplVec[3]*1000.));
+    }
+    if(amplVec[0]>0){
+      if(amplVec[1]>0 && amplVec[1]<amplVec[0]) hDeltaTime12[jfil]->Fill((t50Vec[1]-t50Vec[0])/1000.);
+      else if(amplVec[1]>0 && amplVec[1]>=amplVec[0]) hDeltaTime21[jfil]->Fill((t50Vec[1]-t50Vec[0])/1000.);
+      if(amplVec[2]>0 && amplVec[2]<amplVec[0]) hDeltaTime13[jfil]->Fill((t50Vec[2]-t50Vec[0])/1000.);
+      else if(amplVec[2]>0 && amplVec[2]>=amplVec[0]) hDeltaTime31[jfil]->Fill((t50Vec[2]-t50Vec[0])/1000.);
+      if(amplVec[3]>0 && amplVec[3]<amplVec[0]) hDeltaTime14[jfil]->Fill((t50Vec[3]-t50Vec[0])/1000.);
+      else if(amplVec[3]>0 && amplVec[3]>=amplVec[0]) hDeltaTime41[jfil]->Fill((t50Vec[3]-t50Vec[0])/1000.);
+    }
+  }
+  for(int k=1; k<=hCluSiz[jfil]->GetNbinsX(); k++){
+    hCluSiz[jfil]->SetBinContent(k, hCluSiz[jfil]->GetBinContent(k)/tree->GetEntriesFast());
+  }
+  hCluSizFastResp[jfil]->Scale(1/hAmplCh1FastResp[jfil]->GetEntries());
+  for(int k=1; k<=hCluTyp[jfil]->GetNbinsX(); k++){
+    hCluTyp[jfil]->SetBinContent(k, hCluTyp[jfil]->GetBinContent(k)/tree->GetEntriesFast());
+  }
+  delete tree;
+  return;
+}
+
+
+void PlotFromTree(TString configFile="configuration.txt"){
+
+  int nFiles=0;
+  TString fileNames[maxFiles];
+  int cols[maxFiles]={kMagenta+1,1};
+  TString legEntry[maxFiles];
+  FILE* cFile=fopen(configFile.Data(),"r");
+  char suff[100];
+  char line[200];
+  fgets(line,200,cFile);
+  sscanf(line,"%d %s",&nFiles,suff);
+  if(nFiles>maxFiles){
+    printf("ERROR: maximum number of files is %d\n",maxFiles);
+    return;
+  }
+  TString suffix=suff;
+  int readFiles=0;
+  for(int jf=0; jf<nFiles; jf++){
+    fgets(line,200,cFile);
+    TString theLine(line);
+    TObjArray* arrEnt=theLine.Tokenize(";");
+    int nEnt=arrEnt->GetEntries();
+    if(nEnt!=3){
+      printf("ERROR: expect filename ; color ; legendtext\n");
+      break;
+    }
+    for(int k=0; k<nEnt; k++){
+      TObjString* str=(TObjString*)arrEnt->At(k);
+      TString theStr=str->GetString();
+      theStr.ReplaceAll("\n","");
+      if(k==0) fileNames[jf]=theStr.Data();
+      else if(k==1) cols[jf]=theStr.Atoi();
+      else if(k==2) legEntry[jf]=theStr.Data();
+    }
+    //    arrEnt->Delete();
+    delete arrEnt;
+    readFiles++;
+    if(feof(cFile)) break;
+  }
+  fclose(cFile);
+  if(readFiles!=nFiles){
+    printf("ERROR: mismatch between number of expected files (%d) and number of read lines (%d)\n",nFiles,readFiles);
+    return;
+  }
+  printf("Number of files to be analyzed = %d suffix for plots = %s\n",nFiles,suffix.Data());
+  for(int jf=0; jf<nFiles; jf++){
+    printf("File %d = %s    Color = %d  legend Entry = %s\n",jf,fileNames[jf].Data(),cols[jf],legEntry[jf].Data());
+  }
+  if(nFiles==0) return;
+ 
+  TObjArray* arrHisto = new TObjArray();
+  for(int j=0; j<nFiles; j++){
+    hFallTime[j]=new TH1F(Form("hFallTime%d",j)," All clusters ; Fall Time (ns) ; Entries",100,0.,10.);
+    hAmpl[j]=new TH1F(Form("hAmpl%d",j)," ; Signal Amplitude Ch1 (mV) ; Entries",100,0.,100.);
+    hRecoTime[j]=new TH1F(Form("hRecoTime%d",j)," ; Recovery Time (#mus) ; Entries",100,0.,3.);
+    hFallTimeVsAmpl[j]=new TH2F(Form("hFallTimeVsAmpl%d",j)," ; Signal Amplitude Ch1 (mV) ; Fall Time (ns) ; Entries",50,0.,100.,100,0.,10.);
+    hTotAmpl[j]=new TH1F(Form("hTotAmpl%d",j)," ; Signal Amplitude 4-pixels (mV) ; Entries",100,0.,100.);
+    hCluSiz[j]=new TH1F(Form("hCluSiz%d",j)," ; Cluster Size ; Fraction of events",5,-0.5,4.5);
+    hCluTyp[j]=new TH1F(Form("hCluTyp%d",j)," ; Cluster Shape ; Fraction of events",16,-0.5,15.5);
+    hAmplCh1VsCluSiz[j]=new TH2F(Form("hAmplCh1VsCluSiz%d",j)," ; Cluster Size ; Signal Amplitude Ch1 (mV) ; Entries",5,-0.5,4.5,100,0.,100.);    
+    hFallTimeCh1CluSiz1[j]=new TH1F(Form("hFallTimeCh1CluSiz1%d",j)," Cluster size = 1 ; Fall Time Ch1 (ns) ; Entries",100,0.,10.);    
+    hAmplCh1FastResp[j]=new TH1F(Form("hAmplCh1FastResp%d",j)," Signals with fall time < 0.4 ns ; Signal Amplitude Ch1 (mV) ; Entries",100,0.,100.);
+    hAmplCh2FastResp[j]=new TH1F(Form("hAmplCh2FastResp%d",j)," Signals with fall time < 0.4 ns ; Signal Amplitude Ch2 (mV) ; Entries",100,0.,100.);
+    hAmplCh3FastResp[j]=new TH1F(Form("hAmplCh3FastResp%d",j)," Signals with fall time < 0.4 ns ; Signal Amplitude Ch3 (mV) ; Entries",100,0.,100.);
+    hAmplCh4FastResp[j]=new TH1F(Form("hAmplCh4FastResp%d",j)," Signals with fall time < 0.4 ns ; Signal Amplitude Ch4 (mV) ; Entries",100,0.,100.);
+    hCluSizFastResp[j]=new TH1F(Form("hCluSizFastResp%d",j)," Signals with fall time < 0.4 ns ; Cluster Size ; Fraction of events",5,-0.5,4.5);
+    hDeltaTime12[j]=new TH1F(Form("hDeltaTime12%d",j)," Events with Ampl1 > Ampl2 ; #Deltat_{50} (Ch2 - Ch1) (ns) ; Entries",100,-6,6.);
+    hDeltaTime13[j]=new TH1F(Form("hDeltaTime13%d",j)," Events with Ampl1 > Ampl3 ; #Deltat_{50} (Ch3 - Ch1) (ns) ; Entries",100,-6,6.);
+    hDeltaTime14[j]=new TH1F(Form("hDeltaTime14%d",j)," Events with Ampl1 > Ampl4 ; #Deltat_{50} (Ch4 - Ch1) (ns) ; Entries",100,-6,6.);
+    hDeltaTime21[j]=new TH1F(Form("hDeltaTime21%d",j)," Events with Ampl1 < Ampl2 ; #Deltat_{50} (Ch2 - Ch1) (ns) ; Entries",100,-6,6.);
+    hDeltaTime31[j]=new TH1F(Form("hDeltaTime31%d",j)," Events with Ampl1 < Ampl3 ; #Deltat_{50} (Ch3 - Ch1) (ns) ; Entries",100,-6,6.);
+    hDeltaTime41[j]=new TH1F(Form("hDeltaTime41%d",j)," Events with Ampl1 < Ampl4 ; #Deltat_{50} (Ch4 - Ch1) (ns) ; Entries",100,-6,6.);
+    for(int k=0; k<16; k++){
+      TString lab="";
+      for(int jbit=0; jbit<4;jbit++){	
+	if(k&(1<<jbit)){
+	  if(lab!="") lab+="+";
+	  lab+=jbit+1;
+	}
+      }
+      hCluTyp[j]->GetXaxis()->SetBinLabel(k+1,lab.Data());
+    }
+
+    int indexh=0;
+    arrHisto->AddAtAndExpand(hFallTime[j],indexh++);
+    arrHisto->AddAtAndExpand(hAmpl[j],indexh++);
+    arrHisto->AddAtAndExpand(hRecoTime[j],indexh++);
+    arrHisto->AddAtAndExpand(hFallTimeVsAmpl[j],indexh++);
+    arrHisto->AddAtAndExpand(hTotAmpl[j],indexh++);
+    arrHisto->AddAtAndExpand(hCluSiz[j],indexh++);
+    arrHisto->AddAtAndExpand(hCluTyp[j],indexh++);
+    arrHisto->AddAtAndExpand(hAmplCh1VsCluSiz[j],indexh++);
+    arrHisto->AddAtAndExpand(hFallTimeCh1CluSiz1[j],indexh++);
+    arrHisto->AddAtAndExpand(hAmplCh1FastResp[j],indexh++);
+    arrHisto->AddAtAndExpand(hAmplCh2FastResp[j],indexh++);
+    arrHisto->AddAtAndExpand(hAmplCh3FastResp[j],indexh++);
+    arrHisto->AddAtAndExpand(hAmplCh4FastResp[j],indexh++);
+    arrHisto->AddAtAndExpand(hCluSizFastResp[j],indexh++);
+    arrHisto->AddAtAndExpand(hDeltaTime12[j],indexh++);
+    arrHisto->AddAtAndExpand(hDeltaTime13[j],indexh++);
+    arrHisto->AddAtAndExpand(hDeltaTime14[j],indexh++);
+    arrHisto->AddAtAndExpand(hDeltaTime21[j],indexh++);
+    arrHisto->AddAtAndExpand(hDeltaTime31[j],indexh++);
+    arrHisto->AddAtAndExpand(hDeltaTime41[j],indexh++);
+  
+    TFile* f=new TFile(fileNames[j].Data());
+    fileNames[j].ReplaceAll("_TTree.root","");
+    FillHistosFromTree(f,j);
+    FormatHistos(arrHisto,cols[j]);
+    arrHisto->Clear();
+    profFallTime[j]=hFallTimeVsAmpl[j]->ProfileX(Form("profFallTimeVsAmpl%d",j));
+    profFallTime[j]->GetYaxis()->SetTitle("<Fall Time> (ns)");
+    hFallTimeVsAmpl[j]->SetStats(0);
+    profFallTime[j]->SetLineColor(cols[j]);
+    profFallTime[j]->SetLineWidth(2);
+    profFallTime[j]->SetStats(0);
+    if(hFallTime[j]->GetMaximum()>hFallTime[0]->GetMaximum()) hFallTime[0]->SetMaximum(hFallTime[j]->GetMaximum()*1.05);
+    if(hFallTimeCh1CluSiz1[j]->GetMaximum()>hFallTimeCh1CluSiz1[0]->GetMaximum()) hFallTimeCh1CluSiz1[0]->SetMaximum(hFallTimeCh1CluSiz1[j]->GetMaximum()*1.05);
+    if(hRecoTime[j]->GetMaximum()>hRecoTime[0]->GetMaximum()) hRecoTime[0]->SetMaximum(hRecoTime[j]->GetMaximum()*1.05);
+    if(hAmpl[j]->GetMaximum()>hAmpl[0]->GetMaximum()) hAmpl[0]->SetMaximum(hAmpl[j]->GetMaximum()*1.05);
+    if(hAmplCh1FastResp[j]->GetMaximum()>hAmplCh1FastResp[0]->GetMaximum()) hAmplCh1FastResp[0]->SetMaximum(hAmplCh1FastResp[j]->GetMaximum()*1.05);
+    if(hAmplCh2FastResp[j]->GetMaximum()>hAmplCh2FastResp[0]->GetMaximum()) hAmplCh2FastResp[0]->SetMaximum(hAmplCh2FastResp[j]->GetMaximum()*1.05);
+    if(hAmplCh3FastResp[j]->GetMaximum()>hAmplCh3FastResp[0]->GetMaximum()) hAmplCh3FastResp[0]->SetMaximum(hAmplCh3FastResp[j]->GetMaximum()*1.05);
+    if(hAmplCh4FastResp[j]->GetMaximum()>hAmplCh4FastResp[0]->GetMaximum()) hAmplCh4FastResp[0]->SetMaximum(hAmplCh4FastResp[j]->GetMaximum()*1.05);
+    if(hDeltaTime12[j]->GetMaximum()>hDeltaTime12[0]->GetMaximum()) hDeltaTime12[0]->SetMaximum(hDeltaTime12[j]->GetMaximum()*1.05);
+    if(hDeltaTime13[j]->GetMaximum()>hDeltaTime13[0]->GetMaximum()) hDeltaTime13[0]->SetMaximum(hDeltaTime13[j]->GetMaximum()*1.05);
+    if(hDeltaTime14[j]->GetMaximum()>hDeltaTime14[0]->GetMaximum()) hDeltaTime14[0]->SetMaximum(hDeltaTime14[j]->GetMaximum()*1.05);
+    if(hDeltaTime21[j]->GetMaximum()>hDeltaTime21[0]->GetMaximum()) hDeltaTime21[0]->SetMaximum(hDeltaTime21[j]->GetMaximum()*1.05);
+    if(hDeltaTime31[j]->GetMaximum()>hDeltaTime31[0]->GetMaximum()) hDeltaTime31[0]->SetMaximum(hDeltaTime31[j]->GetMaximum()*1.05);
+    if(hDeltaTime41[j]->GetMaximum()>hDeltaTime41[0]->GetMaximum()) hDeltaTime41[0]->SetMaximum(hDeltaTime41[j]->GetMaximum()*1.05);
+  
+    profAmplCh1[j]=hAmplCh1VsCluSiz[j]->ProfileX(Form("profAmplCh1%d",j));
+    profAmplCh1[j]->GetYaxis()->SetTitle("<Amplitude Ch1> (mV)");
+    hCluTyp[j]->SetStats(0);
+    hAmplCh1VsCluSiz[j]->SetStats(0);
+    profAmplCh1[j]->SetLineColor(cols[j]);
+    profAmplCh1[j]->SetLineWidth(2);
+    profAmplCh1[j]->SetStats(0);
+    if(hTotAmpl[j]->GetMaximum()>hTotAmpl[0]->GetMaximum()) hTotAmpl[0]->SetMaximum(hTotAmpl[j]->GetMaximum()*1.05);
+    if(hCluTyp[j]->GetMaximum()>hCluTyp[0]->GetMaximum()) hCluTyp[0]->SetMaximum(hCluTyp[j]->GetMaximum()*1.05);
+    if(hCluSiz[j]->GetMaximum()>hCluSiz[0]->GetMaximum()) hCluSiz[0]->SetMaximum(hCluSiz[j]->GetMaximum()*1.05);
+    if(hCluSizFastResp[j]->GetMaximum()>hCluSizFastResp[0]->GetMaximum()) hCluSizFastResp[0]->SetMaximum(hCluSizFastResp[j]->GetMaximum()*1.05);
+    if(profAmplCh1[j]->GetMaximum()>profAmplCh1[0]->GetMaximum()*0.9) profAmplCh1[0]->SetMaximum(profAmplCh1[j]->GetMaximum()*1.1);
+  }
+
+  TCanvas* c1 = new TCanvas("c1","",1650,900);
+  c1->Divide(3,2);
+  c1->cd(1);
+  TLegend* leg= new TLegend(0.12,0.6,0.5,0.89);
+  leg->SetMargin(0.1);
+  for(int j=0; j<nFiles; j++){
+    if(j==0) hFallTime[j]->Draw();
+    else hFallTime[j]->Draw("sames");
+    leg->AddEntry(hFallTime[j],legEntry[j].Data(),"L")->SetTextColor(cols[j]);
+    gPad->Update();    
+    TPaveStats *st=(TPaveStats*)hFallTime[j]->GetListOfFunctions()->FindObject("stats");
+    st->SetY1NDC(0.77-0.2*j);
+    st->SetY2NDC(0.96-0.2*j);
+    st->SetTextColor(hFallTime[j]->GetLineColor());
+    gPad->Modified();
+  } 
+  c1->cd(2);
+  for(int j=0; j<nFiles; j++){
+    if(j==0) hRecoTime[j]->Draw();
+    else hRecoTime[j]->Draw("sames");
+    gPad->Update();
+    TPaveStats *st=(TPaveStats*)hRecoTime[j]->GetListOfFunctions()->FindObject("stats");
+    st->SetY1NDC(0.77-0.2*j);
+    st->SetY2NDC(0.96-0.2*j);
+    st->SetTextColor(hRecoTime[j]->GetLineColor());
+    gPad->Modified();
+  }
+  c1->cd(3);
+  for(int j=0; j<nFiles; j++){
+    if(j==0) hAmpl[j]->Draw();
+    else hAmpl[j]->Draw("sames");
+    gPad->Update();    
+    TPaveStats *st=(TPaveStats*)hAmpl[j]->GetListOfFunctions()->FindObject("stats");
+    st->SetY1NDC(0.77-0.2*j);
+    st->SetY2NDC(0.96-0.2*j);
+    st->SetTextColor(hAmpl[j]->GetLineColor());
+    gPad->Modified();
+  }
+  c1->cd(4);
+  hFallTimeVsAmpl[0]->Draw("box");
+  for(int j=1; j<nFiles; j++) hFallTimeVsAmpl[j]->Draw("same,box");
+  c1->cd(5);
+  profFallTime[0]->Draw("");
+  for(int j=1; j<nFiles; j++) profFallTime[j]->Draw("same");
+  c1->cd(6);
+  for(int j=0; j<nFiles; j++){
+    if(j==0) hTotAmpl[j]->Draw();
+    else hTotAmpl[j]->Draw("sames");
+    gPad->Update();    
+    TPaveStats *st=(TPaveStats*)hTotAmpl[j]->GetListOfFunctions()->FindObject("stats");
+    st->SetY1NDC(0.77-0.2*j);
+    st->SetY2NDC(0.96-0.2*j);
+    st->SetTextColor(hTotAmpl[j]->GetLineColor());
+    gPad->Modified();
+  }
+  leg->Draw();
+  c1->SaveAs(Form("Histos_%s.png",suffix.Data()));
+  
+  TCanvas* c2 = new TCanvas("c2","",1650,900);
+  c2->Divide(3,2);
+  c2->cd(1);
+  for(int j=0; j<nFiles; j++){
+    if(j==0) hCluSiz[j]->Draw();
+    else hCluSiz[j]->Draw("sames");
+    gPad->Update();    
+    TPaveStats *st=(TPaveStats*)hCluSiz[j]->GetListOfFunctions()->FindObject("stats");
+    st->SetY1NDC(0.77-0.2*j);
+    st->SetY2NDC(0.96-0.2*j);
+    st->SetTextColor(hCluSiz[j]->GetLineColor());
+    gPad->Modified();
+  }
+  c2->cd(2);
+  hCluTyp[0]->Draw();
+  for(int j=1; j<nFiles; j++) hCluTyp[j]->Draw("same");
+  c2->cd(3);
+  for(int j=0; j<nFiles; j++){
+    if(j==0) hFallTime[j]->Draw();
+    else hFallTime[j]->Draw("sames");
+    double cnt04=hFallTime[j]->Integral(1,hFallTime[j]->GetXaxis()->FindBin(0.3999));
+    double cntall=hFallTime[j]->GetEntries();
+    TLatex* tfrach=new TLatex(0.5,0.72-0.08*j,Form("%.0f/%.0f=%.3f",cnt04,cntall,cnt04/cntall));
+    tfrach->SetNDC();
+    tfrach->SetTextColor(cols[j]);
+    tfrach->SetTextFont(43);
+    tfrach->SetTextSize(20);
+    tfrach->Draw();
+    gPad->Update();    
+    TPaveStats *st=(TPaveStats*)hFallTime[j]->GetListOfFunctions()->FindObject("stats");
+    st->SetY1NDC(0.77-0.2*j);
+    st->SetY2NDC(0.96-0.2*j);
+    st->SetTextColor(hFallTime[j]->GetLineColor());
+    gPad->Modified();
+  } 
+  TLatex* tfrac=new TLatex(0.48,0.8,"Fall time < 0.4 ns");
+  tfrac->SetNDC();
+  tfrac->SetTextFont(43);
+  tfrac->SetTextSize(20);
+  tfrac->Draw();
+  c2->cd(4);
+  hAmplCh1VsCluSiz[0]->Draw("box");
+  for(int j=1; j<nFiles; j++) hAmplCh1VsCluSiz[j]->Draw("same,box");
+  c2->cd(5);
+  profAmplCh1[0]->Draw("");
+  for(int j=1; j<nFiles; j++) profAmplCh1[j]->Draw("same");
+  c2->cd(6);
+  for(int j=0; j<nFiles; j++){
+    if(j==0) hFallTimeCh1CluSiz1[j]->Draw();
+    else hFallTimeCh1CluSiz1[j]->Draw("sames");
+    double cnt04=hFallTimeCh1CluSiz1[j]->Integral(1,hFallTimeCh1CluSiz1[j]->GetXaxis()->FindBin(0.3999));
+    double cntall=hFallTimeCh1CluSiz1[j]->GetEntries();
+    TLatex* tfrach=new TLatex(0.5,0.72-0.08*j,Form("%.0f/%.0f=%.3f",cnt04,cntall,cnt04/cntall));
+    tfrach->SetNDC();
+    tfrach->SetTextColor(cols[j]);
+    tfrach->SetTextFont(43);
+    tfrach->SetTextSize(20);
+    tfrach->Draw();
+    gPad->Update();
+    TPaveStats *st=(TPaveStats*)hFallTimeCh1CluSiz1[j]->GetListOfFunctions()->FindObject("stats");
+    st->SetY1NDC(0.77-0.2*j);
+    st->SetY2NDC(0.96-0.2*j);
+    st->SetTextColor(hTotAmpl[j]->GetLineColor());
+    gPad->Modified();
+  }
+  tfrac->Draw();
+  leg->Draw();
+  c2->SaveAs(Form("CluSiz_%s.png",suffix.Data()));
+  
+  TCanvas* c3 = new TCanvas("c3","",1650,900);
+  c3->Divide(3,2);
+  c3->cd(1);
+  for(int j=0; j<nFiles; j++){
+    if(j==0) hCluSizFastResp[j]->Draw("histo");
+    else hCluSizFastResp[j]->Draw("histosames");
+    gPad->Update();    
+    TPaveStats *st=(TPaveStats*)hCluSizFastResp[j]->GetListOfFunctions()->FindObject("stats");
+    st->SetY1NDC(0.77-0.2*j);
+    st->SetY2NDC(0.96-0.2*j);
+    st->SetTextColor(hCluSizFastResp[j]->GetLineColor());
+    gPad->Modified();
+  }
+  c3->cd(2);
+  for(int j=0; j<nFiles; j++){
+    if(j==0) hAmplCh1FastResp[j]->Draw();
+    else hAmplCh1FastResp[j]->Draw("sames");
+    gPad->Update();    
+    TPaveStats *st=(TPaveStats*)hAmplCh1FastResp[j]->GetListOfFunctions()->FindObject("stats");
+    st->SetY1NDC(0.77-0.2*j);
+    st->SetY2NDC(0.96-0.2*j);
+    st->SetTextColor(hAmplCh1FastResp[j]->GetLineColor());
+    gPad->Modified();
+  }
+  leg->Draw();
+  c3->cd(3);
+  for(int j=0; j<nFiles; j++){
+    if(j==0) hAmplCh2FastResp[j]->Draw();
+    else hAmplCh2FastResp[j]->Draw("sames");
+    gPad->Update();    
+    TPaveStats *st=(TPaveStats*)hAmplCh2FastResp[j]->GetListOfFunctions()->FindObject("stats");
+    st->SetY1NDC(0.77-0.2*j);
+    st->SetY2NDC(0.96-0.2*j);
+    st->SetTextColor(hAmplCh2FastResp[j]->GetLineColor());
+    gPad->Modified();
+  }
+  c3->cd(5);
+  for(int j=0; j<nFiles; j++){
+    if(j==0) hAmplCh3FastResp[j]->Draw();
+    else hAmplCh3FastResp[j]->Draw("sames");
+    gPad->Update();    
+    TPaveStats *st=(TPaveStats*)hAmplCh3FastResp[j]->GetListOfFunctions()->FindObject("stats");
+    st->SetY1NDC(0.77-0.2*j);
+    st->SetY2NDC(0.96-0.2*j);
+    st->SetTextColor(hAmplCh3FastResp[j]->GetLineColor());
+    gPad->Modified();
+  }
+  c3->cd(6);
+  for(int j=0; j<nFiles; j++){
+    if(j==0) hAmplCh4FastResp[j]->Draw();
+    else hAmplCh4FastResp[j]->Draw("sames");
+    gPad->Update();    
+    TPaveStats *st=(TPaveStats*)hAmplCh4FastResp[j]->GetListOfFunctions()->FindObject("stats");
+    st->SetY1NDC(0.77-0.2*j);
+    st->SetY2NDC(0.96-0.2*j);
+    st->SetTextColor(hAmplCh4FastResp[j]->GetLineColor());
+    gPad->Modified();
+  }
+  c3->cd(4);
+  for(int j=0; j<nFiles; j++){
+    TLatex* t1=new TLatex(0.05,0.8-0.25*j,fileNames[j].Data());
+    t1->SetTextFont(43);
+    t1->SetTextSize(18);
+    t1->SetNDC();
+    t1->SetTextColor(cols[j]);
+    t1->Draw();
+    TLatex* t2=new TLatex(0.05,0.72-0.25*j,Form("Fraction with fast response = %.0f / %.0f = %.3f",hAmplCh1FastResp[j]->GetEntries(),hAmpl[j]->GetEntries(),hAmplCh1FastResp[j]->GetEntries()/hAmpl[j]->GetEntries()));
+    t2->SetTextFont(43);
+    t2->SetTextSize(18);
+    t2->SetNDC();
+    t2->SetTextColor(cols[j]);
+    t2->Draw();
+  }
+  c3->SaveAs(Form("FastResp_%s.png",suffix.Data()));
+  
+  TCanvas* c4 = new TCanvas("c4","",1650,900);
+  c4->Divide(3,2);
+  c4->cd(1);
+  for(int j=0; j<nFiles; j++){
+    if(j==0) hDeltaTime12[j]->Draw();
+    else hDeltaTime12[j]->Draw("sames");
+    gPad->Update();    
+    TPaveStats *st=(TPaveStats*)hDeltaTime12[j]->GetListOfFunctions()->FindObject("stats");
+    st->SetY1NDC(0.77-0.2*j);
+    st->SetY2NDC(0.96-0.2*j);
+    st->SetTextColor(hDeltaTime12[j]->GetLineColor());
+    gPad->Modified();
+  }
+  leg->Draw();
+  c4->cd(2);
+  for(int j=0; j<nFiles; j++){
+    if(j==0) hDeltaTime13[j]->Draw();
+    else hDeltaTime13[j]->Draw("sames");
+    gPad->Update();    
+    TPaveStats *st=(TPaveStats*)hDeltaTime13[j]->GetListOfFunctions()->FindObject("stats");
+    st->SetY1NDC(0.77-0.2*j);
+    st->SetY2NDC(0.96-0.2*j);
+    st->SetTextColor(hDeltaTime13[j]->GetLineColor());
+    gPad->Modified();
+  }
+  c4->cd(3);
+  for(int j=0; j<nFiles; j++){
+    if(j==0) hDeltaTime14[j]->Draw();
+    else hDeltaTime14[j]->Draw("sames");
+    gPad->Update();    
+    TPaveStats *st=(TPaveStats*)hDeltaTime14[j]->GetListOfFunctions()->FindObject("stats");
+    st->SetY1NDC(0.77-0.2*j);
+    st->SetY2NDC(0.96-0.2*j);
+    st->SetTextColor(hDeltaTime14[j]->GetLineColor());
+    gPad->Modified();
+  }
+  c4->cd(4);
+  for(int j=0; j<nFiles; j++){
+    if(j==0) hDeltaTime21[j]->Draw();
+    else hDeltaTime21[j]->Draw("sames");
+    gPad->Update();    
+    TPaveStats *st=(TPaveStats*)hDeltaTime21[j]->GetListOfFunctions()->FindObject("stats");
+    st->SetY1NDC(0.77-0.2*j);
+    st->SetY2NDC(0.96-0.2*j);
+    st->SetTextColor(hDeltaTime21[j]->GetLineColor());
+    gPad->Modified();
+  }
+  c4->cd(5);
+  for(int j=0; j<nFiles; j++){
+    if(j==0) hDeltaTime31[j]->Draw();
+    else hDeltaTime31[j]->Draw("sames");
+    gPad->Update();    
+    TPaveStats *st=(TPaveStats*)hDeltaTime31[j]->GetListOfFunctions()->FindObject("stats");
+    st->SetY1NDC(0.77-0.2*j);
+    st->SetY2NDC(0.96-0.2*j);
+    st->SetTextColor(hDeltaTime31[j]->GetLineColor());
+    gPad->Modified();
+  }
+  c4->cd(6);
+  for(int j=0; j<nFiles; j++){
+    if(j==0) hDeltaTime41[j]->Draw();
+    else hDeltaTime41[j]->Draw("sames");
+    gPad->Update();    
+    TPaveStats *st=(TPaveStats*)hDeltaTime41[j]->GetListOfFunctions()->FindObject("stats");
+    st->SetY1NDC(0.77-0.2*j);
+    st->SetY2NDC(0.96-0.2*j);
+    st->SetTextColor(hDeltaTime41[j]->GetLineColor());
+    gPad->Modified();
+  }
+  // c4->cd(8);
+  // for(int j=0; j<nFiles; j++){
+  //   TLatex* t1=new TLatex(0.05,0.8-0.1*j,fileNames[j].Data());
+  //   t1->SetTextFont(43);
+  //   t1->SetTextSize(18);
+  //   t1->SetNDC();
+  //   t1->SetTextColor(cols[j]);
+  //   t1->Draw();
+  // }
+
+
+  c4->SaveAs(Form("DeltaTim_%s.png",suffix.Data()));
+
+}

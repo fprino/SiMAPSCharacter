@@ -1,0 +1,3 @@
+2 Prova
+APTS03_954pt_pxJ5_Vreset035V_Vbb3V_Ibiasn300uA_TTree.root ; 2 ; Vbb=3V, Standard
+APTS06_Vbb-4V_WalterConfig_10000trg_TTree.root ; 4 ; Lunedi
