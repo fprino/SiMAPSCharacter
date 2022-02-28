@@ -460,10 +460,22 @@ void ProcessEvent(TGraph* g, TGraph* glong, double params[10], bool plot){
 }
 
 void ProcessEvent(TString filnam, int ev, int chan){
+  if(chan<1 || chan >4){
+    printf("ERROR: channel number should be 1, 2, 3 or 4\n");
+    return;
+  }
   TFile* f=new TFile(filnam.Data());
   double params[10];
   TGraph* g=(TGraph*)f->Get(Form("grEv%dChanC%dsamp25",ev,chan));
   TGraph* glong=(TGraph*)f->Get(Form("grEv%dChanC%dsamp10000",ev,chan));
+  if(g==0x0){
+    printf("TGraph %s not found in root file\n",Form("grEv%dChanC%dsamp25",ev,chan));
+    return;
+  }
+  if(glong==0x0){
+    printf("TGraph %s not found in root file\n",Form("grEv%dChanC%dsamp10000",ev,chan));
+    return;
+  }
   ProcessEvent(g,glong,params,kTRUE);
 }
 

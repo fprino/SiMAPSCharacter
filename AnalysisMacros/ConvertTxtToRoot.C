@@ -12,7 +12,6 @@ void ConvertTxtToRoot(TString filname="APTS03_Vbb_0V_92pt.txt"){
   char strmonth[5];
   int iEv=-1;
   int iEvOld=-1;
-  int currEv;
   int jSampling;
   float timeBin;
   int day,month,year,hour,mins,sec,nanosec;
@@ -31,7 +30,6 @@ void ConvertTxtToRoot(TString filname="APTS03_Vbb_0V_92pt.txt"){
     if(iEv!=iEvOld){
       printf("New Event: %d\n",iEv);
       iEvOld=iEv;
-      currEv=iEv;
       char* rc=fgets(line,500,infil);
       if(!rc || !strstr(line,"TRIGGER_TIME")){
 	printf("ERROR! Line with TRIGGER_TIME not found .... Exiting\n");
@@ -64,8 +62,8 @@ void ConvertTxtToRoot(TString filname="APTS03_Vbb_0V_92pt.txt"){
 	  //  printf("start reading\n");
 	  int nRead=0;
 	  TGraph* g=new TGraph(0);
-	  g->SetName(Form("grEv%dChan%ssamp%d",currEv,channel,TMath::Nint(timeBin*jSampling)));
-	  g->SetTitle(Form("Event %d Channel %s Time %ld",currEv,channel,tst.GetSec()));
+	  g->SetName(Form("grEv%dChan%ssamp%d",iEv,channel,TMath::Nint(timeBin*jSampling)));
+	  g->SetTitle(Form("Event %d Channel %s Time %ld",iEv,channel,tst.GetSec()));
 	  g->GetYaxis()->SetTitle("Amplitude");
 	  g->GetXaxis()->SetTitle("Time (ps)");
 	  while(1){
