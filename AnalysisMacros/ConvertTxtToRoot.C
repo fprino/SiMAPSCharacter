@@ -39,9 +39,9 @@ void ConvertTxtToRoot(TString filname="APTS03_Vbb_0V_92pt.txt"){
 	printf("Read time for event %d\n",iEv);
 	sscanf(line,"\"TRIGGER_TIME       : Date = %3s %d, %d, Time = %d:%d:%f\"",strmonth,&day,&year,&hour,&mins,&secfloat);
 	sec=(int)secfloat;
-	nanosec=(int)(secfloat*1e9);
+	nanosec=0;//(int)(secfloat*1e9);
 	if(strcmp(strmonth,"FEB")==0) month=2;
-	else if(strcmp(strmonth,"MAR")==0) month=2;
+	else if(strcmp(strmonth,"MAR")==0) month=3;
 	tst.Set(year,month,day,hour,mins,sec,nanosec,kFALSE,0);
 	printf("Event %d Time: %d%02d%02d %02d:%02d:%02d --> %ld \n",iEv,year,month,day,hour,mins,sec,tst.GetSec());	
       }
