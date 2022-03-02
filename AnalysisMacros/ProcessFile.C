@@ -153,6 +153,28 @@ double FindOnGraph(TGraph* gcount, double y, double xmin, double xmax, int inter
 
 
 void FindEdge(TGraph* gcount,TGraph* gnegder, TGraph* gder, double& endplateau, double& edgeleft, double& edgeright){
+  
+  // first very rough: compute flat levels on the left and on the right and check their difference
+  double maxTime=GetMaxX(gcount);
+  double levleft,rmsleft,levright,rmsright;
+  GetMeanAndRMSCounts(gcount,0.,2000.,levleft,rmsleft);
+  GetMeanAndRMSCounts(gcount,maxTime-2000,maxTime,levright,rmsright);
+  double y50=0.5*(levleft+levright);
+  double t50fromleft=FindOnGraph(gcount,y50,0.,maxTime,4);
+  double t50fromright=FindOnGraph(gcount,y50,0.,maxTime,4,kTRUE);
+  double roughsig=levleft-levright;
+  printf("Rough signal = %f Rough edge position = %f %f\n",roughsig,t50fromleft,t50fromright);
+  double minSearchWindow=0;
+  double maxSearchWindow=maxTime;
+  if(roughsig>0.0005){
+    minSearchWindow=TMath::Min(t50fromleft,t50fromright)-6000.;
+    if(minSearchWindow<0) minSearchWindow=0;
+    maxSearchWindow=TMath::Max(t50fromleft,t50fromright)+6000.;
+    if(maxSearchWindow>maxTime) maxSearchWindow=maxTime;
+  }
+  printf("Search window = %f %f\n",minSearchWindow,maxSearchWindow);
+  
+  // second step: search for accumulation of adjacent points with negative derivative
   double xmaxn=-1;
   double cmaxn=-1;
   int jmaxn=-1;
@@ -160,6 +182,7 @@ void FindEdge(TGraph* gcount,TGraph* gnegder, TGraph* gder, double& endplateau, 
     for(int j=0; j<gnegder->GetN(); j++){
       double x,c;
       gnegder->GetPoint(j,x,c);
+      if(x<minSearchWindow || x>maxSearchWindow) continue;
       if(c>cmaxn){
 	cmaxn=c;
 	xmaxn=x;
@@ -182,15 +205,17 @@ void FindEdge(TGraph* gcount,TGraph* gnegder, TGraph* gder, double& endplateau, 
 	}
       }
     }
-    printf("xmaxn=%f   n_neg=%f\n",xmaxn,cmaxn);
+    printf("Maximum adjacent points with negative derivative: t_maxn=%f   n_neg=%f\n",xmaxn,cmaxn);
   }
   
+  // third step: search for minimum of derivative and range where derivative differs from 0
   double xminder=-1;
   double dermin=99999.;
   int jminder=-1;
   for(int j=0; j<gder->GetN(); j++){
     double x,d;
     gder->GetPoint(j,x,d);
+    if(x<minSearchWindow || x>maxSearchWindow) continue;
     if(d<dermin){
       dermin=d;
       xminder=x;
@@ -203,7 +228,7 @@ void FindEdge(TGraph* gcount,TGraph* gnegder, TGraph* gder, double& endplateau, 
     edgeright=0;
     return;
   }
-  printf("xminder=%f   dermin=%f\n",xminder,dermin);
+  printf("Minimum of derivative: xminder=%f   dermin=%f\n",xminder,dermin);
   int jleft=-1;
   double dthresh=-1e-7;
   for(int j=jminder; j>0; j--){
@@ -226,11 +251,14 @@ void FindEdge(TGraph* gcount,TGraph* gnegder, TGraph* gder, double& endplateau, 
   double xleft,xright,dum;
   gder->GetPoint(jleft,xleft,dum);
   gder->GetPoint(jright,xright,dum);
-  printf("xleft=%f   xright=%f\n",xleft,xright);
-  if(xmaxn>0){
+  printf("Region of negative derivative: xleft=%f   xright=%f\n",xleft,xright);
+  if(xmaxn>0 && TMath::Abs(xmaxn-xleft)<5000 && TMath::Abs(xmaxn-xright)<5000){
     if(xleft>xmaxn) xleft=xmaxn;
     if(xright<xmaxn) xright=xmaxn;
   }
+  printf("Edge range after analysis of derivative: xleft=%f   xright=%f\n",xleft,xright);
+
+  // Fourth step: start from left and seach for N points with couns < baseline-3sigma
   double cmean,crms;
   GetMeanAndRMSCounts(gcount,0.,xleft,cmean,crms);
   printf("Mean before edge = %f rms = %f\n",cmean,crms);
@@ -253,11 +281,12 @@ void FindEdge(TGraph* gcount,TGraph* gnegder, TGraph* gder, double& endplateau, 
       break;
     }
   }
-  printf("xleft2=%f\n",xleft2);
+  printf("Left Edge from baseline-N*rms = %f\n",xleft2);
   if(xleft2>0){
     endplateau=TMath::Min(xleft,xleft2);
     edgeleft=TMath::Max(xleft,xleft2);
     edgeright=xright;
+    printf("Edge range after all steps: endplateau=%f   edgeleft=%f   edgeright=%f\n",endplateau,edgeleft,edgeright);
     return;
   }
   endplateau=0;
@@ -283,6 +312,7 @@ void ProcessEvent(TGraph* g, TGraph* glong, double params[10], bool plot){
   gd->SetTitle(g->GetTitle());
   gd->GetYaxis()->SetTitle("Amplitude derivative (smoothened)");
   double endpl,edgeleft,edgeright;
+  printf("--- Edge finding on fine graph ---\n");
   FindEdge(g,gnegd,gd,endpl,edgeleft,edgeright);
   TF1* fbas=new TF1("fbas","[0]");
   TF1* flow=new TF1("flow","[0]");
@@ -291,6 +321,7 @@ void ProcessEvent(TGraph* g, TGraph* glong, double params[10], bool plot){
   double maxTime=GetMaxX(g);
   if(endpl<0.0001) endpl=maxTime;
   
+  printf("--- Edge parameters ---\n");
   g->Fit(flow,"Q+","",edgeright,maxTime);
   g->Fit(fbas,"Q+","",0.,endpl);
   double basel=fbas->GetParameter(0);
@@ -333,6 +364,7 @@ void ProcessEvent(TGraph* g, TGraph* glong, double params[10], bool plot){
   gdlong->SetTitle(g->GetTitle());
   gdlong->GetYaxis()->SetTitle("Amplitude derivative");
   double endpl2,edgeleft2,edgeright2;
+  printf("--- Edge finding on coarse graph ---\n");
   FindEdge(glong,0x0,gdlong,endpl2,edgeleft2,edgeright2);
   if(!isSignal){
     endpl2=MaxTimeLong;
