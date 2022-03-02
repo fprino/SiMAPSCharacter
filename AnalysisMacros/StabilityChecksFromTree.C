@@ -4,6 +4,7 @@
 #include <TAxis.h>
 #include <TH1.h>
 #include <TLegend.h>
+#include <TLatex.h>
 #include <TTimeStamp.h>
 #include <TLegendEntry.h>
 #include <TCanvas.h>
@@ -12,59 +13,46 @@
 void StabilityChecksFromTree(TString treeFileName="APTS10_Vbb-4V_WalerConfig_2000trg_TTree.root"){
   int ev;
   ULong64_t timest;
-  double basel1,basel2,basel3,basel4,ampl1;
+  double basel[4],ampl[4],falltime[4];
   TFile* f=new TFile(treeFileName.Data());
   TTree* tree=(TTree*)f->Get("treeParams");
   tree->SetBranchAddress("Event",&ev);
   tree->SetBranchAddress("Timestamp",&timest);
-  tree->SetBranchAddress("BaselineCh1",&basel1);
-  tree->SetBranchAddress("BaselineCh2",&basel2);
-  tree->SetBranchAddress("BaselineCh3",&basel3);
-  tree->SetBranchAddress("BaselineCh4",&basel4);
-  tree->SetBranchAddress("SignalAmplCh1",&ampl1);
+  for(int jpix=0; jpix<4; jpix++){
+    tree->SetBranchAddress(Form("BaselineCh%d",jpix+1),&basel[jpix]);
+    tree->SetBranchAddress(Form("SignalAmplCh%d",jpix+1),&ampl[jpix]);
+    tree->SetBranchAddress(Form("FallTimeCh%d",jpix+1),&falltime[jpix]);
+  }
   TGraph* gTimeFromStart=new TGraph(0);
   TGraph* gDeltaTim=new TGraph(0);
-  TGraph* gBasel1=new TGraph(0);
-  TGraph* gBasel2=new TGraph(0);
-  TGraph* gBasel3=new TGraph(0);
-  TGraph* gBasel4=new TGraph(0);
-  TGraph* gBasel1Sig=new TGraph(0);
-  TGraph* gBasel2Sig=new TGraph(0);
-  TGraph* gBasel3Sig=new TGraph(0);
-  TGraph* gBasel4Sig=new TGraph(0);
-  gBasel1->SetTitle("Channel 1");
-  gBasel2->SetTitle("Channel 2");
-  gBasel3->SetTitle("Channel 3");
-  gBasel4->SetTitle("Channel 4");
-  gBasel1->GetXaxis()->SetTitle("Event");
-  gBasel2->GetXaxis()->SetTitle("Event");
-  gBasel3->GetXaxis()->SetTitle("Event");
-  gBasel4->GetXaxis()->SetTitle("Event");
-  gBasel1->GetYaxis()->SetTitle("Baseline");
-  gBasel2->GetYaxis()->SetTitle("Baseline");
-  gBasel3->GetYaxis()->SetTitle("Baseline");
-  gBasel4->GetYaxis()->SetTitle("Baseline");
-  gBasel1Sig->SetTitle("Channel 1, events with signal");
-  gBasel2Sig->SetTitle("Channel 2, events with signal");
-  gBasel3Sig->SetTitle("Channel 3, events with signal");
-  gBasel4Sig->SetTitle("Channel 4, events with signal");
-  gBasel1Sig->GetXaxis()->SetTitle("Event");
-  gBasel2Sig->GetXaxis()->SetTitle("Event");
-  gBasel3Sig->GetXaxis()->SetTitle("Event");
-  gBasel4Sig->GetXaxis()->SetTitle("Event");
-  gBasel1Sig->GetYaxis()->SetTitle("Baseline");
-  gBasel2Sig->GetYaxis()->SetTitle("Baseline");
-  gBasel3Sig->GetYaxis()->SetTitle("Baseline");
-  gBasel4Sig->GetYaxis()->SetTitle("Baseline");
   gDeltaTim->SetTitle("");
   gDeltaTim->GetXaxis()->SetTitle("Event");
   gDeltaTim->GetYaxis()->SetTitle("Time to next event (s)");
   gTimeFromStart->SetTitle("");
   gTimeFromStart->GetXaxis()->SetTitle("Event");
   gTimeFromStart->GetYaxis()->SetTitle("Time from start of run (s)");
-  TH1F* hDeltaTim=new TH1F("hDeltaTim"," ; Time to next event (s) ; Entries",100,0.,200.);
-  ULong64_t timestold=-9;
-  ULong64_t tstart=-9;
+  TH1F* hDeltaTim=new TH1F("hDeltaTim"," ; Time to next event (s) ; Entries",100,0.,400.);
+  TGraph** gBasel=new TGraph*[4];
+  TGraph** gBaselSig=new TGraph*[4];
+  TGraph** gFallTime=new TGraph*[4];
+  for(int jpix=0; jpix<4; jpix++){
+    gBasel[jpix]=new TGraph(0);
+    gBaselSig[jpix]=new TGraph(0);
+    gFallTime[jpix]=new TGraph(0);
+    gBasel[jpix]->SetTitle(Form("Channel %d",jpix+1));
+    gBasel[jpix]->GetXaxis()->SetTitle("Event");
+    gBasel[jpix]->GetYaxis()->SetTitle("Baseline");
+    gBaselSig[jpix]->SetTitle(Form("Channel %d, events with signal",jpix+1));
+    gBaselSig[jpix]->GetXaxis()->SetTitle("Event");
+    gBaselSig[jpix]->GetYaxis()->SetTitle("Baseline");
+    gFallTime[jpix]->SetTitle(Form("Channel %d",jpix+1));
+    gFallTime[jpix]->GetXaxis()->SetTitle("Event");
+    gFallTime[jpix]->GetYaxis()->SetTitle("Fall Time (ns)");
+  }
+  ULong64_t timestold=0;
+  ULong64_t tstart=0;
+  double totEv=tree->GetEntriesFast();
+  double evWithSignal[4]={0.,0.,0.,0.};
   for(int ient=0; ient<tree->GetEntriesFast(); ient++){
     tree->GetEvent(ient);
     TTimeStamp tcur(timest);
@@ -77,53 +65,28 @@ void StabilityChecksFromTree(TString treeFileName="APTS10_Vbb-4V_WalerConfig_200
 	gDeltaTim->SetPoint(gDeltaTim->GetN(),ev,(double)dtim);
 	hDeltaTim->Fill((double)dtim);
       }else{
-	TTimeStamp tprev(timestold);
-	printf("Reverted time at event %d? Current %d %d   Previous %d %d\n",ev,tcur.GetDate(),tcur.GetTime(),tprev.GetDate(),tprev.GetTime());
+	if(timestold>0){
+	  TTimeStamp tprev(timestold);
+	  printf("Reverted time at event %d? Current %d %d   Previous %d %d\n",ev,tcur.GetDate(),tcur.GetTime(),tprev.GetDate(),tprev.GetTime());
+	}
       }
     }
     timestold=timest;
-    gBasel1->SetPoint(ient,ev,basel1);
-    gBasel2->SetPoint(ient,ev,basel2);
-    gBasel3->SetPoint(ient,ev,basel3);
-    gBasel4->SetPoint(ient,ev,basel4);
-    if(ampl1>0){
-      gBasel1Sig->SetPoint(ient,ev,basel1);
-      gBasel2Sig->SetPoint(ient,ev,basel2);
-      gBasel3Sig->SetPoint(ient,ev,basel3);
-      gBasel4Sig->SetPoint(ient,ev,basel4);
+    if(ampl[0]<0) printf("Event %d: no signal in ch 1\n",ient);
+    for(int jpix=0; jpix<4; jpix++){
+      if(ampl[jpix]>0) evWithSignal[jpix]+=1;
+      gBasel[jpix]->SetPoint(ient,ev,basel[jpix]);
+      if(ampl[0]>0) gBaselSig[jpix]->SetPoint(ient,ev,basel[jpix]);
+      if(ampl[jpix]>0 && falltime[jpix]>=0) gFallTime[jpix]->SetPoint(ient,ev,falltime[jpix]/1000.);
     }
   }
-  gBasel1->SetMarkerStyle(7);
-  gBasel2->SetMarkerStyle(7);
-  gBasel3->SetMarkerStyle(7);
-  gBasel4->SetMarkerStyle(7);
-  gBasel1Sig->SetMarkerStyle(7);
-  gBasel2Sig->SetMarkerStyle(7);
-  gBasel3Sig->SetMarkerStyle(7);
-  gBasel4Sig->SetMarkerStyle(7);
-  gBasel1Sig->SetMarkerColor(kGreen+1);
-  gBasel2Sig->SetMarkerColor(kGreen+1);
-  gBasel3Sig->SetMarkerColor(kGreen+1);
-  gBasel4Sig->SetMarkerColor(kGreen+1);
-  TCanvas* cB=new TCanvas("cB","",1600,800);
-  cB->Divide(2,2);
-  cB->cd(1);
-  gBasel1->Draw("AP");
-  gBasel1Sig->Draw("PSAME");
-  cB->cd(2);
-  gBasel2->Draw("AP");
-  gBasel2Sig->Draw("PSAME");
-  TLegend* leg=new TLegend(0.2,0.2,0.5,0.4);
-  leg->AddEntry(gBasel2,"All Events","P");
-  leg->AddEntry(gBasel2Sig,"Events with signal","P")->SetTextColor(kGreen+1);
-  leg->Draw();
-  cB->cd(3);
-  gBasel3->Draw("AP");
-  gBasel3Sig->Draw("PSAME");
-  cB->cd(4);
-  gBasel4->Draw("AP");
-  gBasel4Sig->Draw("PSAME");
-
+  for(int jpix=0; jpix<4; jpix++){
+    gBasel[jpix]->SetMarkerStyle(7);
+    gBaselSig[jpix]->SetMarkerStyle(7);
+    gBaselSig[jpix]->SetMarkerColor(kGreen+1);
+    gFallTime[jpix]->SetMarkerStyle(7);
+  }
+  
   TCanvas* cT=new TCanvas("cT","",1600,800);
   cT->Divide(2,2);
   cT->cd(1);
@@ -135,4 +98,35 @@ void StabilityChecksFromTree(TString treeFileName="APTS10_Vbb-4V_WalerConfig_200
   cT->cd(3);
   gPad->SetLogy();
   hDeltaTim->Draw();
+
+  TCanvas* cB=new TCanvas("cB","",1600,800);
+  cB->Divide(2,2);
+  for(int jpix=0; jpix<4; jpix++){
+    cB->cd(jpix+1);
+    gBasel[jpix]->Draw("AP");
+    gBaselSig[jpix]->Draw("PSAME");
+    if(jpix==0){
+      TLatex* t1=new TLatex(0.15,0.85,Form("Fraction of events with signal in ch1= %.0f / %.0f = %.3f",evWithSignal[0],totEv,evWithSignal[0]/totEv));
+      t1->SetTextColor(4);
+      t1->SetNDC();
+      t1->Draw();
+    }
+    else if(jpix==1){
+      TLegend* leg=new TLegend(0.2,0.2,0.6,0.4);
+      leg->AddEntry(gBasel[jpix],"All Events","P");
+      leg->AddEntry(gBaselSig[jpix],"Events with signal in ch1","P")->SetTextColor(gBaselSig[jpix]->GetMarkerColor());
+      leg->Draw();
+    }
+  }
+
+  TCanvas* cFT=new TCanvas("cFT","",1600,800);
+  cFT->Divide(2,2);
+  for(int jpix=0; jpix<4; jpix++){
+    cFT->cd(jpix+1);
+    gFallTime[jpix]->Draw("AP");
+    TLatex* tF=new TLatex(0.15,0.85,Form("Fraction of events with signal in ch%d= %.0f / %.0f = %.3f",jpix+1,evWithSignal[jpix],totEv,evWithSignal[jpix]/totEv));
+    tF->SetTextColor(4);
+    tF->SetNDC();
+    tF->Draw();
+  }
 }
