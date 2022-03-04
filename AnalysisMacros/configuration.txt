@@ -1,3 +1,4 @@
-2 Prova
-APTS03_954pt_pxJ5_Vreset035V_Vbb3V_Ibiasn300uA_TTree.root ; 2 ; Vbb=3V, Standard
-APTS06_Vbb-4V_WalterConfig_10000trg_TTree.root ; 4 ; Lunedi
+2 J10-J5
+APTS10_Vbb-4V_WalterConfig_20220301_561trg_TTree.root ; J5; 1 ; APTS10-J5
+APTS10_Vbb-4V_WalterConfig_675trg_20220302_TTree.root ; J10 ; 6 ; APTS10-J10
+
