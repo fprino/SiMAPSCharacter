@@ -16,7 +16,11 @@
 
 const int maxFiles=5;
 TH1F* hFallTime[maxFiles];
-TH1F* hAmpl[maxFiles];
+TH1F* hAmplTrigChan[maxFiles];
+TH1F* hAmplCh1[maxFiles];
+TH1F* hAmplCh2[maxFiles];
+TH1F* hAmplCh3[maxFiles];
+TH1F* hAmplCh4[maxFiles];
 TH1F* hRecoTime[maxFiles];
 TH2F* hFallTimeTrigChanVsAmplTrigChan[maxFiles];
 TH2F* hFallTimeTrigChanVsAmplTrigChanCluSiz1[maxFiles];
@@ -84,7 +88,11 @@ void FillHistosFromTree(TFile* f, int jfil, int iTrigChan){
     tree->GetEvent(ient);
     if(amplVec[iTrigChan]>=0){
       hFallTime[jfil]->Fill(fallTimeVec[iTrigChan]/1000.);
-      hAmpl[jfil]->Fill(amplVec[iTrigChan]*1000.);
+      hAmplTrigChan[jfil]->Fill(amplVec[iTrigChan]*1000.);
+      hAmplCh1[jfil]->Fill(amplVec[0]*1000.);
+      hAmplCh2[jfil]->Fill(amplVec[1]*1000.);
+      hAmplCh3[jfil]->Fill(amplVec[2]*1000.);
+      hAmplCh4[jfil]->Fill(amplVec[3]*1000.);
       hRecoTime[jfil]->Fill(recoTimeVec[iTrigChan]/1e6);
       hFallTimeTrigChanVsAmplTrigChan[jfil]->Fill(amplVec[iTrigChan]*1000.,fallTimeVec[iTrigChan]/1000.);
     }
@@ -201,7 +209,11 @@ void PlotFromTree(TString configFile="configuration.txt", bool normalizeToArea=k
   double cntFTall[4];
   for(int j=0; j<nFiles; j++){
     hFallTime[j]=new TH1F(Form("hFallTime%d",j)," All clusters ; Fall Time TrigChan (ns) ; Entries",100,0.,10.);
-    hAmpl[j]=new TH1F(Form("hAmpl%d",j)," ; Signal Amplitude TrigChan (mV) ; Entries",100,0.,100.);
+    hAmplTrigChan[j]=new TH1F(Form("hAmplTrigChan%d",j)," ; Signal Amplitude TrigChan (mV) ; Entries",100,0.,100.);
+    hAmplCh1[j]=new TH1F(Form("hAmplCh1%d",j)," ; Signal Amplitude Ch1 (mV) ; Entries",100,0.,100.);
+    hAmplCh2[j]=new TH1F(Form("hAmplCh2%d",j)," ; Signal Amplitude Ch2 (mV) ; Entries",100,0.,100.);
+    hAmplCh3[j]=new TH1F(Form("hAmplCh3%d",j)," ; Signal Amplitude Ch3 (mV) ; Entries",100,0.,100.);
+    hAmplCh4[j]=new TH1F(Form("hAmplCh4%d",j)," ; Signal Amplitude Ch4 (mV) ; Entries",100,0.,100.);
     hRecoTime[j]=new TH1F(Form("hRecoTime%d",j)," ; Recovery Time (#mus) ; Entries",100,0.,3.);
     hFallTimeTrigChanVsAmplTrigChan[j]=new TH2F(Form("hFallTimeTrigChanVsAmplTrigChan%d",j)," ; Signal Amplitude TrigChan (mV) ; Fall Time TrigChan (ns) ; Entries",50,0.,100.,100,0.,10.);
     hFallTimeTrigChanVsAmplTrigChanCluSiz1[j]=new TH2F(Form("hFallTimeTrigChanVsAmplTrigChanCluSiz1%d",j)," Cluster size = 1  ; Signal Amplitude TrigChan (mV) ; Fall Time TrigChan (ns) ; Entries",50,0.,100.,100,0.,10.);
@@ -237,7 +249,11 @@ void PlotFromTree(TString configFile="configuration.txt", bool normalizeToArea=k
 
     int indexh=0;
     arrHisto->AddAtAndExpand(hFallTime[j],indexh++);
-    arrHisto->AddAtAndExpand(hAmpl[j],indexh++);
+    arrHisto->AddAtAndExpand(hAmplTrigChan[j],indexh++);
+    arrHisto->AddAtAndExpand(hAmplCh1[j],indexh++);
+    arrHisto->AddAtAndExpand(hAmplCh2[j],indexh++);
+    arrHisto->AddAtAndExpand(hAmplCh3[j],indexh++);
+    arrHisto->AddAtAndExpand(hAmplCh4[j],indexh++);
     arrHisto->AddAtAndExpand(hRecoTime[j],indexh++);
     arrHisto->AddAtAndExpand(hFallTimeTrigChanVsAmplTrigChan[j],indexh++);
     arrHisto->AddAtAndExpand(hFallTimeTrigChanVsAmplTrigChanCluSiz1[j],indexh++);
@@ -292,8 +308,16 @@ void PlotFromTree(TString configFile="configuration.txt", bool normalizeToArea=k
     if(normalizeToArea){
       hTotAmpl[j]->Scale(1./hTotAmpl[j]->Integral());
       hTotAmpl[j]->GetYaxis()->SetTitle("Enrites (a.u.)");
-      hAmpl[j]->Scale(1./hAmpl[j]->Integral());
-      hAmpl[j]->GetYaxis()->SetTitle("Enrites (a.u.)");
+      hAmplTrigChan[j]->Scale(1./hAmplTrigChan[j]->Integral());
+      hAmplTrigChan[j]->GetYaxis()->SetTitle("Enrites (a.u.)");
+      hAmplCh1[j]->Scale(1./hAmplCh1[j]->Integral());
+      hAmplCh1[j]->GetYaxis()->SetTitle("Enrites (a.u.)");
+      hAmplCh2[j]->Scale(1./hAmplCh2[j]->Integral());
+      hAmplCh2[j]->GetYaxis()->SetTitle("Enrites (a.u.)");
+      hAmplCh3[j]->Scale(1./hAmplCh3[j]->Integral());
+      hAmplCh3[j]->GetYaxis()->SetTitle("Enrites (a.u.)");
+      hAmplCh4[j]->Scale(1./hAmplCh4[j]->Integral());
+      hAmplCh4[j]->GetYaxis()->SetTitle("Enrites (a.u.)");
       hFallTime[j]->Scale(1./hFallTime[j]->Integral());
       hFallTime[j]->GetYaxis()->SetTitle("Enrites (a.u.)");
       hFallTimeTrigChanCluSiz1[j]->Scale(1./hFallTimeTrigChanCluSiz1[j]->Integral());
@@ -317,7 +341,11 @@ void PlotFromTree(TString configFile="configuration.txt", bool normalizeToArea=k
     if(hFallTime[j]->GetMaximum()>hFallTime[0]->GetMaximum()) hFallTime[0]->SetMaximum(hFallTime[j]->GetMaximum()*1.05);
     if(hFallTimeTrigChanCluSiz1[j]->GetMaximum()>hFallTimeTrigChanCluSiz1[0]->GetMaximum()) hFallTimeTrigChanCluSiz1[0]->SetMaximum(hFallTimeTrigChanCluSiz1[j]->GetMaximum()*1.05);
     if(hRecoTime[j]->GetMaximum()>hRecoTime[0]->GetMaximum()) hRecoTime[0]->SetMaximum(hRecoTime[j]->GetMaximum()*1.05);
-    if(hAmpl[j]->GetMaximum()>hAmpl[0]->GetMaximum()) hAmpl[0]->SetMaximum(hAmpl[j]->GetMaximum()*1.05);
+    if(hAmplTrigChan[j]->GetMaximum()>hAmplTrigChan[0]->GetMaximum()) hAmplTrigChan[0]->SetMaximum(hAmplTrigChan[j]->GetMaximum()*1.05);
+    if(hAmplCh1[j]->GetMaximum()>hAmplCh1[0]->GetMaximum()) hAmplCh1[0]->SetMaximum(hAmplCh1[j]->GetMaximum()*1.05);
+    if(hAmplCh2[j]->GetMaximum()>hAmplCh2[0]->GetMaximum()) hAmplCh2[0]->SetMaximum(hAmplCh2[j]->GetMaximum()*1.05);
+    if(hAmplCh3[j]->GetMaximum()>hAmplCh3[0]->GetMaximum()) hAmplCh3[0]->SetMaximum(hAmplCh3[j]->GetMaximum()*1.05);
+    if(hAmplCh4[j]->GetMaximum()>hAmplCh4[0]->GetMaximum()) hAmplCh4[0]->SetMaximum(hAmplCh4[j]->GetMaximum()*1.05);
     if(hAmplCh1FastResp[j]->GetMaximum()>hAmplCh1FastResp[0]->GetMaximum()) hAmplCh1FastResp[0]->SetMaximum(hAmplCh1FastResp[j]->GetMaximum()*1.05);
     if(hAmplCh2FastResp[j]->GetMaximum()>hAmplCh2FastResp[0]->GetMaximum()) hAmplCh2FastResp[0]->SetMaximum(hAmplCh2FastResp[j]->GetMaximum()*1.05);
     if(hAmplCh3FastResp[j]->GetMaximum()>hAmplCh3FastResp[0]->GetMaximum()) hAmplCh3FastResp[0]->SetMaximum(hAmplCh3FastResp[j]->GetMaximum()*1.05);
@@ -347,15 +375,64 @@ void PlotFromTree(TString configFile="configuration.txt", bool normalizeToArea=k
 
   }
 
-  TCanvas* c1 = new TCanvas("c1","",1650,900);
-  c1->Divide(3,2);
-  c1->cd(1);
+  TCanvas* cA = new TCanvas("cA","Amplitudes",1100,900);
+  cA->Divide(2,2);
+  cA->cd(1);
   TLegend* leg= new TLegend(0.12,0.6,0.5,0.89);
   leg->SetMargin(0.1);
   for(int j=0; j<nFiles; j++){
+    if(j==0) hAmplCh1[j]->Draw("histo");
+    else hAmplCh1[j]->Draw("histo,sames");
+    leg->AddEntry(hAmplCh1[j],legEntry[j].Data(),"L")->SetTextColor(cols[j]);
+    gPad->Update();    
+    TPaveStats *st=(TPaveStats*)hAmplCh1[j]->GetListOfFunctions()->FindObject("stats");
+    st->SetY1NDC(0.77-0.2*j);
+    st->SetY2NDC(0.96-0.2*j);
+    st->SetTextColor(hAmplCh1[j]->GetLineColor());
+    gPad->Modified();
+  }
+  leg->Draw();
+  cA->cd(2);
+  for(int j=0; j<nFiles; j++){
+    if(j==0) hAmplCh2[j]->Draw("histo");
+    else hAmplCh2[j]->Draw("histo,sames");
+    gPad->Update();    
+    TPaveStats *st=(TPaveStats*)hAmplCh2[j]->GetListOfFunctions()->FindObject("stats");
+    st->SetY1NDC(0.77-0.2*j);
+    st->SetY2NDC(0.96-0.2*j);
+    st->SetTextColor(hAmplCh2[j]->GetLineColor());
+    gPad->Modified();
+  }
+  cA->cd(4);
+  for(int j=0; j<nFiles; j++){
+    if(j==0) hAmplCh3[j]->Draw("histo");
+    else hAmplCh3[j]->Draw("histo,sames");
+    gPad->Update();    
+    TPaveStats *st=(TPaveStats*)hAmplCh3[j]->GetListOfFunctions()->FindObject("stats");
+    st->SetY1NDC(0.77-0.2*j);
+    st->SetY2NDC(0.96-0.2*j);
+    st->SetTextColor(hAmplCh3[j]->GetLineColor());
+    gPad->Modified();
+  } 
+  cA->cd(3);
+  for(int j=0; j<nFiles; j++){
+    if(j==0) hAmplCh4[j]->Draw("histo");
+    else hAmplCh4[j]->Draw("histo,sames");
+    gPad->Update();    
+    TPaveStats *st=(TPaveStats*)hAmplCh4[j]->GetListOfFunctions()->FindObject("stats");
+    st->SetY1NDC(0.77-0.2*j);
+    st->SetY2NDC(0.96-0.2*j);
+    st->SetTextColor(hAmplCh4[j]->GetLineColor());
+    gPad->Modified();
+  } 
+  cA->SaveAs(Form("Amplitudes_%s.png",suffix.Data()));
+	     
+  TCanvas* c1 = new TCanvas("c1","Histos TrigChan",1650,900);
+  c1->Divide(3,2);
+  c1->cd(1);
+  for(int j=0; j<nFiles; j++){
     if(j==0) hFallTime[j]->Draw("histo");
     else hFallTime[j]->Draw("histo,sames");
-    leg->AddEntry(hFallTime[j],legEntry[j].Data(),"L")->SetTextColor(cols[j]);
     gPad->Update();    
     TPaveStats *st=(TPaveStats*)hFallTime[j]->GetListOfFunctions()->FindObject("stats");
     st->SetY1NDC(0.77-0.2*j);
@@ -376,13 +453,13 @@ void PlotFromTree(TString configFile="configuration.txt", bool normalizeToArea=k
   }
   c1->cd(3);
   for(int j=0; j<nFiles; j++){
-    if(j==0) hAmpl[j]->Draw("histo");
-    else hAmpl[j]->Draw("histo,sames");
+    if(j==0) hAmplTrigChan[j]->Draw("histo");
+    else hAmplTrigChan[j]->Draw("histo,sames");
     gPad->Update();    
-    TPaveStats *st=(TPaveStats*)hAmpl[j]->GetListOfFunctions()->FindObject("stats");
+    TPaveStats *st=(TPaveStats*)hAmplTrigChan[j]->GetListOfFunctions()->FindObject("stats");
     st->SetY1NDC(0.77-0.2*j);
     st->SetY2NDC(0.96-0.2*j);
-    st->SetTextColor(hAmpl[j]->GetLineColor());
+    st->SetTextColor(hAmplTrigChan[j]->GetLineColor());
     gPad->Modified();
   }
   c1->cd(4);
@@ -406,7 +483,7 @@ void PlotFromTree(TString configFile="configuration.txt", bool normalizeToArea=k
   leg->Draw();
   c1->SaveAs(Form("Histos_%s.png",suffix.Data()));
   
-  TCanvas* c2 = new TCanvas("c2","",1650,900);
+  TCanvas* c2 = new TCanvas("c2","Histos CluSiz",1650,900);
   c2->Divide(3,2);
   c2->cd(1);
   for(int j=0; j<nFiles; j++){
@@ -471,7 +548,7 @@ void PlotFromTree(TString configFile="configuration.txt", bool normalizeToArea=k
   leg->Draw();
   c2->SaveAs(Form("CluSiz_%s.png",suffix.Data()));
   
-  TCanvas* c3 = new TCanvas("c3","",1650,900);
+  TCanvas* c3 = new TCanvas("c3","FastResponse",1650,900);
   c3->Divide(3,2);
   c3->cd(1);
   for(int j=0; j<nFiles; j++){
@@ -537,7 +614,7 @@ void PlotFromTree(TString configFile="configuration.txt", bool normalizeToArea=k
     t1->SetNDC();
     t1->SetTextColor(cols[j]);
     t1->Draw();
-    TLatex* t2=new TLatex(0.05,0.72-0.25*j,Form("Fraction with fast response = %.0f / %.0f = %.3f",hAmplCh1FastResp[j]->GetEntries(),hAmpl[j]->GetEntries(),hAmplCh1FastResp[j]->GetEntries()/hAmpl[j]->GetEntries()));
+    TLatex* t2=new TLatex(0.05,0.72-0.25*j,Form("Fraction with fast response = %.0f / %.0f = %.3f",hAmplCh1FastResp[j]->GetEntries(),hAmplTrigChan[j]->GetEntries(),hAmplCh1FastResp[j]->GetEntries()/hAmplTrigChan[j]->GetEntries()));
     t2->SetTextFont(43);
     t2->SetTextSize(18);
     t2->SetNDC();
@@ -546,7 +623,7 @@ void PlotFromTree(TString configFile="configuration.txt", bool normalizeToArea=k
   }
   c3->SaveAs(Form("FastResp_%s.png",suffix.Data()));
   
-  TCanvas* c4 = new TCanvas("c4","",1650,900);
+  TCanvas* c4 = new TCanvas("c4","Delta t50",1650,900);
   c4->Divide(3,2);
   c4->cd(1);
   for(int j=0; j<nFiles; j++){
@@ -628,7 +705,7 @@ void PlotFromTree(TString configFile="configuration.txt", bool normalizeToArea=k
 
   c4->SaveAs(Form("DeltaTim_%s.png",suffix.Data()));
 
-  TCanvas* c5=new TCanvas("c5","",1650,900);
+  TCanvas* c5=new TCanvas("c5","FallTime vs Ampl",1650,900);
   c5->Divide(nFiles+1,2);
   for(int j=0; j<nFiles; j++){
     c5->cd(j+1);
