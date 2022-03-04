@@ -10,7 +10,7 @@
 #include <TCanvas.h>
 
 
-void StabilityChecksFromTree(TString treeFileName="APTS10_Vbb-4V_WalerConfig_2000trg_TTree.root"){
+void StabilityChecksFromTree(TString treeFileName="APTS10_Vbb-4V_WalerConfig_2000trg_TTree.root", int trigchan=3){
   int ev;
   ULong64_t timest;
   double basel[4],ampl[4],falltime[4];
@@ -35,10 +35,12 @@ void StabilityChecksFromTree(TString treeFileName="APTS10_Vbb-4V_WalerConfig_200
   TGraph** gBasel=new TGraph*[4];
   TGraph** gBaselSig=new TGraph*[4];
   TGraph** gFallTime=new TGraph*[4];
+  TGraph** gAmpl=new TGraph*[4];
   for(int jpix=0; jpix<4; jpix++){
     gBasel[jpix]=new TGraph(0);
     gBaselSig[jpix]=new TGraph(0);
     gFallTime[jpix]=new TGraph(0);
+    gAmpl[jpix]=new TGraph(0);
     gBasel[jpix]->SetTitle(Form("Channel %d",jpix+1));
     gBasel[jpix]->GetXaxis()->SetTitle("Event");
     gBasel[jpix]->GetYaxis()->SetTitle("Baseline");
@@ -48,11 +50,15 @@ void StabilityChecksFromTree(TString treeFileName="APTS10_Vbb-4V_WalerConfig_200
     gFallTime[jpix]->SetTitle(Form("Channel %d",jpix+1));
     gFallTime[jpix]->GetXaxis()->SetTitle("Event");
     gFallTime[jpix]->GetYaxis()->SetTitle("Fall Time (ns)");
+    gAmpl[jpix]->SetTitle(Form("Channel %d",jpix+1));
+    gAmpl[jpix]->GetXaxis()->SetTitle("Event");
+    gAmpl[jpix]->GetYaxis()->SetTitle("Signal Amplitude (mV)");
   }
   ULong64_t timestold=0;
   ULong64_t tstart=0;
   double totEv=tree->GetEntriesFast();
   double evWithSignal[4]={0.,0.,0.,0.};
+  double averampl[4]={0.,0.,0.,0.};
   for(int ient=0; ient<tree->GetEntriesFast(); ient++){
     tree->GetEvent(ient);
     TTimeStamp tcur(timest);
@@ -72,19 +78,27 @@ void StabilityChecksFromTree(TString treeFileName="APTS10_Vbb-4V_WalerConfig_200
       }
     }
     timestold=timest;
-    if(ampl[0]<0) printf("Event %d: no signal in ch 1\n",ient);
+    if(ampl[trigchan-1]<0) printf("Event %d: no signal in ch %d\n",ient,trigchan);
     for(int jpix=0; jpix<4; jpix++){
-      if(ampl[jpix]>0) evWithSignal[jpix]+=1;
+      if(ampl[jpix]>0){
+	evWithSignal[jpix]+=1;
+	averampl[jpix]+=ampl[jpix]*1000.;
+      }
       gBasel[jpix]->SetPoint(ient,ev,basel[jpix]);
-      if(ampl[0]>0) gBaselSig[jpix]->SetPoint(ient,ev,basel[jpix]);
+      if(ampl[jpix]>0){
+	gBaselSig[jpix]->SetPoint(ient,ev,basel[jpix]);
+	gAmpl[jpix]->SetPoint(ient,ev,ampl[jpix]*1000.);
+      }
       if(ampl[jpix]>0 && falltime[jpix]>=0) gFallTime[jpix]->SetPoint(ient,ev,falltime[jpix]/1000.);
     }
   }
   for(int jpix=0; jpix<4; jpix++){
+    if(evWithSignal[jpix]>0) averampl[jpix]/=evWithSignal[jpix];
     gBasel[jpix]->SetMarkerStyle(7);
     gBaselSig[jpix]->SetMarkerStyle(7);
     gBaselSig[jpix]->SetMarkerColor(kGreen+1);
     gFallTime[jpix]->SetMarkerStyle(7);
+    gAmpl[jpix]->SetMarkerStyle(7);
   }
   
   TCanvas* cT=new TCanvas("cT","",1600,800);
@@ -105,18 +119,31 @@ void StabilityChecksFromTree(TString treeFileName="APTS10_Vbb-4V_WalerConfig_200
     cB->cd(jpix+1);
     gBasel[jpix]->Draw("AP");
     gBaselSig[jpix]->Draw("PSAME");
-    if(jpix==0){
-      TLatex* t1=new TLatex(0.15,0.85,Form("Fraction of events with signal in ch1= %.0f / %.0f = %.3f",evWithSignal[0],totEv,evWithSignal[0]/totEv));
-      t1->SetTextColor(4);
-      t1->SetNDC();
-      t1->Draw();
-    }
-    else if(jpix==1){
+    TLatex* t1=new TLatex(0.15,0.85,Form("Fraction of events with signal in ch%d= %.0f / %.0f = %.3f",jpix+1,evWithSignal[jpix],totEv,evWithSignal[jpix]/totEv));
+    t1->SetTextColor(4);
+    t1->SetNDC();
+    t1->Draw();
+    if(jpix==1){
       TLegend* leg=new TLegend(0.2,0.2,0.6,0.4);
       leg->AddEntry(gBasel[jpix],"All Events","P");
       leg->AddEntry(gBaselSig[jpix],"Events with signal in ch1","P")->SetTextColor(gBaselSig[jpix]->GetMarkerColor());
       leg->Draw();
     }
+  }
+
+  TCanvas* cA=new TCanvas("cA","",1600,800);
+  cA->Divide(2,2);
+  for(int jpix=0; jpix<4; jpix++){
+    cA->cd(jpix+1);
+    gAmpl[jpix]->Draw("AP");
+    TLatex* tF=new TLatex(0.15,0.85,Form("Fraction of events with signal in ch %d=%.0f / %.0f = %.3f",jpix+1,evWithSignal[jpix],totEv,evWithSignal[jpix]/totEv));
+    tF->SetTextColor(4);
+    tF->SetNDC();
+    tF->Draw();
+    TLatex* tA=new TLatex(0.15,0.78,Form("<Amplitude> Ch %d = %.2f mV",jpix+1,averampl[jpix]));
+    tA->SetTextColor(4);
+    tA->SetNDC();
+    tA->Draw();
   }
 
   TCanvas* cFT=new TCanvas("cFT","",1600,800);

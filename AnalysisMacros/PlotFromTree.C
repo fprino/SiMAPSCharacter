@@ -18,18 +18,18 @@ const int maxFiles=5;
 TH1F* hFallTime[maxFiles];
 TH1F* hAmpl[maxFiles];
 TH1F* hRecoTime[maxFiles];
-TH2F* hFallTimeCh1VsAmplCh1[maxFiles];
-TH2F* hFallTimeCh1VsAmplCh1CluSiz1[maxFiles];
-TH2F* hFallTimeCh1VsAmplCh1CluSizGt1[maxFiles];
+TH2F* hFallTimeTrigChanVsAmplTrigChan[maxFiles];
+TH2F* hFallTimeTrigChanVsAmplTrigChanCluSiz1[maxFiles];
+TH2F* hFallTimeTrigChanVsAmplTrigChanCluSizGt1[maxFiles];
 TProfile* profFallTime[maxFiles];
 TProfile* profFallTimeCluSiz1[maxFiles];
 TProfile* profFallTimeCluSizGt1[maxFiles];
 TH1F* hTotAmpl[maxFiles];
 TH1F* hCluSiz[maxFiles];
 TH1F* hCluTyp[maxFiles];
-TH2F* hAmplCh1VsCluSiz[maxFiles];
-TH1F* hFallTimeCh1CluSiz1[maxFiles];
-TProfile* profAmplCh1[maxFiles];
+TH2F* hAmplTrigChanVsCluSiz[maxFiles];
+TH1F* hFallTimeTrigChanCluSiz1[maxFiles];
+TProfile* profAmplTrigChan[maxFiles];
 TH1F* hAmplCh1FastResp[maxFiles];
 TH1F* hAmplCh2FastResp[maxFiles];
 TH1F* hAmplCh3FastResp[maxFiles];
@@ -59,36 +59,34 @@ void FormatHistos(TObjArray* arrHisto, int theColor){
   }
 }
 
-void FillHistosFromTree(TFile* f, int jfil){
-  
-  int ev,chan;
-  double basel,mincnt,ampl,t10,t90,falltime,recotime;
+void FillHistosFromTree(TFile* f, int jfil, int iTrigChan){
+  printf("Fill histos wit iTrigChan = %d\n",iTrigChan);
   TTree* tree=(TTree*)f->Get("treeParams");
-  tree->SetBranchAddress("Event",&ev);
-  tree->SetBranchAddress("BaselineCh1",&basel);
-  tree->SetBranchAddress("MinLevelCh1",&mincnt);
-  tree->SetBranchAddress("t10Ch1",&t10);
-  tree->SetBranchAddress("t90Ch1",&t90);
+  int ev;
+  double t10Vec[4];
   double t50Vec[4];
-  tree->SetBranchAddress("t50Ch1",&t50Vec[0]);
-  tree->SetBranchAddress("t50Ch2",&t50Vec[1]);
-  tree->SetBranchAddress("t50Ch3",&t50Vec[2]);
-  tree->SetBranchAddress("t50Ch4",&t50Vec[3]);
-  tree->SetBranchAddress("FallTimeCh1",&falltime);
-  tree->SetBranchAddress("RecovTimeExpoCh1",&recotime);
+  double t90Vec[4];
   double amplVec[4];
-  tree->SetBranchAddress("SignalAmplCh1",&amplVec[0]);
-  tree->SetBranchAddress("SignalAmplCh2",&amplVec[1]);
-  tree->SetBranchAddress("SignalAmplCh3",&amplVec[2]);
-  tree->SetBranchAddress("SignalAmplCh4",&amplVec[3]);
+  double baselVec[4];
+  double recoTimeVec[4];
+  double fallTimeVec[4];
+  tree->SetBranchAddress("Event",&ev);
+  for(int k=0; k<4; k++){
+    tree->SetBranchAddress(Form("t10Ch%d",k+1),&t10Vec[k]);
+    tree->SetBranchAddress(Form("t50Ch%d",k+1),&t50Vec[k]);
+    tree->SetBranchAddress(Form("t90Ch%d",k+1),&t90Vec[k]);
+    tree->SetBranchAddress(Form("FallTimeCh%d",k+1),&fallTimeVec[k]);
+    tree->SetBranchAddress(Form("RecovTimeExpoCh%d",k+1),&recoTimeVec[k]);
+    tree->SetBranchAddress(Form("SignalAmplCh%d",k+1),&amplVec[k]);
+  }
 
   for(int ient=0; ient<tree->GetEntriesFast(); ient++){
     tree->GetEvent(ient);
-    if(amplVec[0]>=0){
-      hFallTime[jfil]->Fill(falltime/1000.);
-      hAmpl[jfil]->Fill(amplVec[0]*1000.);
-      hRecoTime[jfil]->Fill(recotime/1e6);
-      hFallTimeCh1VsAmplCh1[jfil]->Fill(amplVec[0]*1000.,falltime/1000.);
+    if(amplVec[iTrigChan]>=0){
+      hFallTime[jfil]->Fill(fallTimeVec[iTrigChan]/1000.);
+      hAmpl[jfil]->Fill(amplVec[iTrigChan]*1000.);
+      hRecoTime[jfil]->Fill(recoTimeVec[iTrigChan]/1e6);
+      hFallTimeTrigChanVsAmplTrigChan[jfil]->Fill(amplVec[iTrigChan]*1000.,fallTimeVec[iTrigChan]/1000.);
     }
     int clusiz=0;
     int clutyp=0;
@@ -101,25 +99,25 @@ void FillHistosFromTree(TFile* f, int jfil){
       }
     }
     
-    if(amplVec[0]>0){
+    if(amplVec[iTrigChan]>0){
       hCluSiz[jfil]->Fill(clusiz);
       hCluTyp[jfil]->Fill(clutyp);
       hTotAmpl[jfil]->Fill(totampl);
-      hAmplCh1VsCluSiz[jfil]->Fill(clusiz,amplVec[0]*1000);
+      hAmplTrigChanVsCluSiz[jfil]->Fill(clusiz,amplVec[iTrigChan]*1000);
     }
-    if(amplVec[0]>0 && clusiz==1){
-      hFallTimeCh1CluSiz1[jfil]->Fill(falltime/1000.);
-      hFallTimeCh1VsAmplCh1CluSiz1[jfil]->Fill(amplVec[0]*1000.,falltime/1000.);
+    if(amplVec[iTrigChan]>0 && clusiz==1){
+      hFallTimeTrigChanCluSiz1[jfil]->Fill(fallTimeVec[iTrigChan]/1000.);
+      hFallTimeTrigChanVsAmplTrigChanCluSiz1[jfil]->Fill(amplVec[iTrigChan]*1000.,fallTimeVec[iTrigChan]/1000.);
     }
-    if(amplVec[0]>0 && clusiz>1) hFallTimeCh1VsAmplCh1CluSizGt1[jfil]->Fill(amplVec[0]*1000.,falltime/1000.);
-    if(amplVec[0]>0 && falltime<400.){
-      hAmplCh1FastResp[jfil]->Fill(amplVec[0]*1000.);
+    if(amplVec[iTrigChan]>0 && clusiz>1) hFallTimeTrigChanVsAmplTrigChanCluSizGt1[jfil]->Fill(amplVec[iTrigChan]*1000.,fallTimeVec[iTrigChan]/1000.);
+    if(amplVec[iTrigChan]>0 && fallTimeVec[iTrigChan]<400.){
       hCluSizFastResp[jfil]->Fill(clusiz);
+      hAmplCh1FastResp[jfil]->Fill(TMath::Max(0.,amplVec[0]*1000.));
       hAmplCh2FastResp[jfil]->Fill(TMath::Max(0.,amplVec[1]*1000.));
       hAmplCh3FastResp[jfil]->Fill(TMath::Max(0.,amplVec[2]*1000.));
       hAmplCh4FastResp[jfil]->Fill(TMath::Max(0.,amplVec[3]*1000.));
     }
-    if(amplVec[0]>0){
+    if(amplVec[iTrigChan]>0){
       if(amplVec[1]>0 && amplVec[1]<amplVec[0]) hDeltaTime12[jfil]->Fill((t50Vec[1]-t50Vec[0])/1000.);
       else if(amplVec[1]>0 && amplVec[1]>=amplVec[0]) hDeltaTime21[jfil]->Fill((t50Vec[1]-t50Vec[0])/1000.);
       if(amplVec[2]>0 && amplVec[2]<amplVec[0]) hDeltaTime13[jfil]->Fill((t50Vec[2]-t50Vec[0])/1000.);
@@ -144,6 +142,8 @@ void PlotFromTree(TString configFile="configuration.txt", bool normalizeToArea=k
 
   int nFiles=0;
   TString fileNames[maxFiles];
+  TString trigChan[maxFiles];
+  int jTrigChan[maxFiles];
   int cols[maxFiles]={kMagenta+1,1};
   TString legEntry[maxFiles];
   FILE* cFile=fopen(configFile.Data(),"r");
@@ -162,8 +162,8 @@ void PlotFromTree(TString configFile="configuration.txt", bool normalizeToArea=k
     TString theLine(line);
     TObjArray* arrEnt=theLine.Tokenize(";");
     int nEnt=arrEnt->GetEntries();
-    if(nEnt!=3){
-      printf("ERROR: expect filename ; color ; legendtext\n");
+    if(nEnt!=4){
+      printf("ERROR: expect filename ; trigchan ; color ; legendtext\n");
       break;
     }
     for(int k=0; k<nEnt; k++){
@@ -171,8 +171,12 @@ void PlotFromTree(TString configFile="configuration.txt", bool normalizeToArea=k
       TString theStr=str->GetString();
       theStr.ReplaceAll("\n","");
       if(k==0) fileNames[jf]=theStr.Data();
-      else if(k==1) cols[jf]=theStr.Atoi();
-      else if(k==2) legEntry[jf]=theStr.Data();
+      if(k==1) trigChan[jf]=theStr.Data();
+      else if(k==2) cols[jf]=theStr.Atoi();
+      else if(k==3) legEntry[jf]=theStr.Data();
+      jTrigChan[jf]=1;
+      if(trigChan[jf].Contains("J5")) jTrigChan[jf]=1;
+      else if(trigChan[jf].Contains("J10")) jTrigChan[jf]=3;
     }
     //    arrEnt->Delete();
     delete arrEnt;
@@ -186,25 +190,29 @@ void PlotFromTree(TString configFile="configuration.txt", bool normalizeToArea=k
   }
   printf("Number of files to be analyzed = %d suffix for plots = %s\n",nFiles,suffix.Data());
   for(int jf=0; jf<nFiles; jf++){
-    printf("File %d = %s    Color = %d  legend Entry = %s\n",jf,fileNames[jf].Data(),cols[jf],legEntry[jf].Data());
+    printf("File %d = %s  trigger channel = %s(%d)  Color = %d  legend Entry = %s\n",jf, fileNames[jf].Data(),trigChan[jf].Data(),jTrigChan[jf],cols[jf],legEntry[jf].Data());
   }
   if(nFiles==0) return;
  
   TObjArray* arrHisto = new TObjArray();
+  double cnt04[4];
+  double cntall[4];
+  double cntFT04[4];
+  double cntFTall[4];
   for(int j=0; j<nFiles; j++){
-    hFallTime[j]=new TH1F(Form("hFallTime%d",j)," All clusters ; Fall Time Ch1 (ns) ; Entries",100,0.,10.);
-    hAmpl[j]=new TH1F(Form("hAmpl%d",j)," ; Signal Amplitude Ch1 (mV) ; Entries",100,0.,100.);
+    hFallTime[j]=new TH1F(Form("hFallTime%d",j)," All clusters ; Fall Time TrigChan (ns) ; Entries",100,0.,10.);
+    hAmpl[j]=new TH1F(Form("hAmpl%d",j)," ; Signal Amplitude TrigChan (mV) ; Entries",100,0.,100.);
     hRecoTime[j]=new TH1F(Form("hRecoTime%d",j)," ; Recovery Time (#mus) ; Entries",100,0.,3.);
-    hFallTimeCh1VsAmplCh1[j]=new TH2F(Form("hFallTimeCh1VsAmplCh1%d",j)," ; Signal Amplitude Ch1 (mV) ; Fall Time Ch1 (ns) ; Entries",50,0.,100.,100,0.,10.);
-    hFallTimeCh1VsAmplCh1CluSiz1[j]=new TH2F(Form("hFallTimeCh1VsAmplCh1CluSiz1%d",j)," Cluster size = 1  ; Signal Amplitude Ch1 (mV) ; Fall Time Ch1 (ns) ; Entries",50,0.,100.,100,0.,10.);
-    hFallTimeCh1VsAmplCh1CluSiz1[j]->SetTitle(Form("%s Cluster size = 1",legEntry[j].Data()));
-    hFallTimeCh1VsAmplCh1CluSizGt1[j]=new TH2F(Form("hFallTimeCh1VsAmplCh1CluSizGt1%d",j)," Cluster size > 1  ; Signal Amplitude Ch1 (mV) ; Fall Time Ch1 (ns) ; Entries",50,0.,100.,100,0.,10.);
-    hFallTimeCh1VsAmplCh1CluSizGt1[j]->SetTitle(Form("%s Cluster size > 1",legEntry[j].Data()));
+    hFallTimeTrigChanVsAmplTrigChan[j]=new TH2F(Form("hFallTimeTrigChanVsAmplTrigChan%d",j)," ; Signal Amplitude TrigChan (mV) ; Fall Time TrigChan (ns) ; Entries",50,0.,100.,100,0.,10.);
+    hFallTimeTrigChanVsAmplTrigChanCluSiz1[j]=new TH2F(Form("hFallTimeTrigChanVsAmplTrigChanCluSiz1%d",j)," Cluster size = 1  ; Signal Amplitude TrigChan (mV) ; Fall Time TrigChan (ns) ; Entries",50,0.,100.,100,0.,10.);
+    hFallTimeTrigChanVsAmplTrigChanCluSiz1[j]->SetTitle(Form("%s Cluster size = 1",legEntry[j].Data()));
+    hFallTimeTrigChanVsAmplTrigChanCluSizGt1[j]=new TH2F(Form("hFallTimeTrigChanVsAmplTrigChanCluSizGt1%d",j)," Cluster size > 1  ; Signal Amplitude TrigChan (mV) ; Fall Time TrigChan (ns) ; Entries",50,0.,100.,100,0.,10.);
+    hFallTimeTrigChanVsAmplTrigChanCluSizGt1[j]->SetTitle(Form("%s Cluster size > 1",legEntry[j].Data()));
     hTotAmpl[j]=new TH1F(Form("hTotAmpl%d",j)," ; Signal Amplitude 4-pixels (mV) ; Entries",100,0.,100.);
     hCluSiz[j]=new TH1F(Form("hCluSiz%d",j)," ; Cluster Size ; Fraction of events",5,-0.5,4.5);
     hCluTyp[j]=new TH1F(Form("hCluTyp%d",j)," ; Cluster Shape ; Fraction of events",16,-0.5,15.5);
-    hAmplCh1VsCluSiz[j]=new TH2F(Form("hAmplCh1VsCluSiz%d",j)," ; Cluster Size ; Signal Amplitude Ch1 (mV) ; Entries",5,-0.5,4.5,100,0.,100.);    
-    hFallTimeCh1CluSiz1[j]=new TH1F(Form("hFallTimeCh1CluSiz1%d",j)," Cluster size = 1 ; Fall Time Ch1 (ns) ; Entries",100,0.,10.);    
+    hAmplTrigChanVsCluSiz[j]=new TH2F(Form("hAmplTrigChanVsCluSiz%d",j)," ; Cluster Size ; Signal Amplitude TrigChan (mV) ; Entries",5,-0.5,4.5,100,0.,100.);    
+    hFallTimeTrigChanCluSiz1[j]=new TH1F(Form("hFallTimeTrigChanCluSiz1%d",j)," Cluster size = 1 ; Fall Time TrigChan (ns) ; Entries",100,0.,10.);    
     hAmplCh1FastResp[j]=new TH1F(Form("hAmplCh1FastResp%d",j)," Signals with fall time < 0.4 ns ; Signal Amplitude Ch1 (mV) ; Entries",100,0.,100.);
     hAmplCh2FastResp[j]=new TH1F(Form("hAmplCh2FastResp%d",j)," Signals with fall time < 0.4 ns ; Signal Amplitude Ch2 (mV) ; Entries",100,0.,100.);
     hAmplCh3FastResp[j]=new TH1F(Form("hAmplCh3FastResp%d",j)," Signals with fall time < 0.4 ns ; Signal Amplitude Ch3 (mV) ; Entries",100,0.,100.);
@@ -231,14 +239,14 @@ void PlotFromTree(TString configFile="configuration.txt", bool normalizeToArea=k
     arrHisto->AddAtAndExpand(hFallTime[j],indexh++);
     arrHisto->AddAtAndExpand(hAmpl[j],indexh++);
     arrHisto->AddAtAndExpand(hRecoTime[j],indexh++);
-    arrHisto->AddAtAndExpand(hFallTimeCh1VsAmplCh1[j],indexh++);
-    arrHisto->AddAtAndExpand(hFallTimeCh1VsAmplCh1CluSiz1[j],indexh++);
-    arrHisto->AddAtAndExpand(hFallTimeCh1VsAmplCh1CluSizGt1[j],indexh++);
+    arrHisto->AddAtAndExpand(hFallTimeTrigChanVsAmplTrigChan[j],indexh++);
+    arrHisto->AddAtAndExpand(hFallTimeTrigChanVsAmplTrigChanCluSiz1[j],indexh++);
+    arrHisto->AddAtAndExpand(hFallTimeTrigChanVsAmplTrigChanCluSizGt1[j],indexh++);
     arrHisto->AddAtAndExpand(hTotAmpl[j],indexh++);
     arrHisto->AddAtAndExpand(hCluSiz[j],indexh++);
     arrHisto->AddAtAndExpand(hCluTyp[j],indexh++);
-    arrHisto->AddAtAndExpand(hAmplCh1VsCluSiz[j],indexh++);
-    arrHisto->AddAtAndExpand(hFallTimeCh1CluSiz1[j],indexh++);
+    arrHisto->AddAtAndExpand(hAmplTrigChanVsCluSiz[j],indexh++);
+    arrHisto->AddAtAndExpand(hFallTimeTrigChanCluSiz1[j],indexh++);
     arrHisto->AddAtAndExpand(hAmplCh1FastResp[j],indexh++);
     arrHisto->AddAtAndExpand(hAmplCh2FastResp[j],indexh++);
     arrHisto->AddAtAndExpand(hAmplCh3FastResp[j],indexh++);
@@ -253,30 +261,34 @@ void PlotFromTree(TString configFile="configuration.txt", bool normalizeToArea=k
 
     TFile* f=new TFile(fileNames[j].Data());
     fileNames[j].ReplaceAll("_TTree.root","");
-    FillHistosFromTree(f,j);
+    FillHistosFromTree(f,j,jTrigChan[j]-1);
     FormatHistos(arrHisto,cols[j]);
     arrHisto->Clear();
-    profFallTime[j]=hFallTimeCh1VsAmplCh1[j]->ProfileX(Form("profFallTimeVsAmpl%d",j));
-    profFallTime[j]->GetYaxis()->SetTitle("<Fall Time Ch1> (ns)");
-    hFallTimeCh1VsAmplCh1[j]->SetStats(0);
+    profFallTime[j]=hFallTimeTrigChanVsAmplTrigChan[j]->ProfileX(Form("profFallTimeVsAmpl%d",j));
+    profFallTime[j]->GetYaxis()->SetTitle("<Fall Time TrigChan> (ns)");
+    hFallTimeTrigChanVsAmplTrigChan[j]->SetStats(0);
     profFallTime[j]->SetLineColor(cols[j]);
     profFallTime[j]->SetLineWidth(2);
     profFallTime[j]->SetStats(0);
-    profFallTimeCluSiz1[j]=hFallTimeCh1VsAmplCh1CluSiz1[j]->ProfileX(Form("profFallTimeVsAmplCluSiz1%d",j));
-    profFallTimeCluSiz1[j]->GetYaxis()->SetTitle("<Fall Time Ch1> (ns)");
+    profFallTimeCluSiz1[j]=hFallTimeTrigChanVsAmplTrigChanCluSiz1[j]->ProfileX(Form("profFallTimeVsAmplCluSiz1%d",j));
+    profFallTimeCluSiz1[j]->GetYaxis()->SetTitle("<Fall Time TrigChan> (ns)");
     profFallTimeCluSiz1[j]->SetLineColor(cols[j]);
     profFallTimeCluSiz1[j]->SetMarkerColor(cols[j]);
     profFallTimeCluSiz1[j]->SetMarkerStyle(20);
     profFallTimeCluSiz1[j]->SetLineWidth(2);
     profFallTimeCluSiz1[j]->SetStats(0);
-    profFallTimeCluSizGt1[j]=hFallTimeCh1VsAmplCh1CluSizGt1[j]->ProfileX(Form("profFallTimeVsAmplCluSizGt1%d",j));
-    profFallTimeCluSizGt1[j]->GetYaxis()->SetTitle("<Fall Time Ch1> (ns)");
+    profFallTimeCluSizGt1[j]=hFallTimeTrigChanVsAmplTrigChanCluSizGt1[j]->ProfileX(Form("profFallTimeVsAmplCluSizGt1%d",j));
+    profFallTimeCluSizGt1[j]->GetYaxis()->SetTitle("<Fall Time TrigChan> (ns)");
     profFallTimeCluSizGt1[j]->SetLineColor(cols[j]);
     profFallTimeCluSizGt1[j]->SetMarkerColor(cols[j]);
     profFallTimeCluSizGt1[j]->SetMarkerStyle(25);
     profFallTimeCluSizGt1[j]->SetLineWidth(2);
     profFallTimeCluSizGt1[j]->SetStats(0);
     
+    cnt04[j]=hFallTimeTrigChanCluSiz1[j]->Integral(1,hFallTimeTrigChanCluSiz1[j]->GetXaxis()->FindBin(0.3999));
+    cntall[j]=hFallTimeTrigChanCluSiz1[j]->GetEntries();
+    cntFT04[j]=hFallTime[j]->Integral(1,hFallTime[j]->GetXaxis()->FindBin(0.3999));
+    cntFTall[j]=hFallTime[j]->GetEntries();
     if(normalizeToArea){
       hTotAmpl[j]->Scale(1./hTotAmpl[j]->Integral());
       hTotAmpl[j]->GetYaxis()->SetTitle("Enrites (a.u.)");
@@ -284,8 +296,8 @@ void PlotFromTree(TString configFile="configuration.txt", bool normalizeToArea=k
       hAmpl[j]->GetYaxis()->SetTitle("Enrites (a.u.)");
       hFallTime[j]->Scale(1./hFallTime[j]->Integral());
       hFallTime[j]->GetYaxis()->SetTitle("Enrites (a.u.)");
-      hFallTimeCh1CluSiz1[j]->Scale(1./hFallTimeCh1CluSiz1[j]->Integral());
-      hFallTimeCh1CluSiz1[j]->GetYaxis()->SetTitle("Enrites (a.u.)");
+      hFallTimeTrigChanCluSiz1[j]->Scale(1./hFallTimeTrigChanCluSiz1[j]->Integral());
+      hFallTimeTrigChanCluSiz1[j]->GetYaxis()->SetTitle("Enrites (a.u.)");
       hRecoTime[j]->Scale(1./hRecoTime[j]->Integral());
       hRecoTime[j]->GetYaxis()->SetTitle("Enrites (a.u.)");
       hDeltaTime12[j]->Scale(1./hDeltaTime12[j]->Integral());
@@ -303,7 +315,7 @@ void PlotFromTree(TString configFile="configuration.txt", bool normalizeToArea=k
     }
 
     if(hFallTime[j]->GetMaximum()>hFallTime[0]->GetMaximum()) hFallTime[0]->SetMaximum(hFallTime[j]->GetMaximum()*1.05);
-    if(hFallTimeCh1CluSiz1[j]->GetMaximum()>hFallTimeCh1CluSiz1[0]->GetMaximum()) hFallTimeCh1CluSiz1[0]->SetMaximum(hFallTimeCh1CluSiz1[j]->GetMaximum()*1.05);
+    if(hFallTimeTrigChanCluSiz1[j]->GetMaximum()>hFallTimeTrigChanCluSiz1[0]->GetMaximum()) hFallTimeTrigChanCluSiz1[0]->SetMaximum(hFallTimeTrigChanCluSiz1[j]->GetMaximum()*1.05);
     if(hRecoTime[j]->GetMaximum()>hRecoTime[0]->GetMaximum()) hRecoTime[0]->SetMaximum(hRecoTime[j]->GetMaximum()*1.05);
     if(hAmpl[j]->GetMaximum()>hAmpl[0]->GetMaximum()) hAmpl[0]->SetMaximum(hAmpl[j]->GetMaximum()*1.05);
     if(hAmplCh1FastResp[j]->GetMaximum()>hAmplCh1FastResp[0]->GetMaximum()) hAmplCh1FastResp[0]->SetMaximum(hAmplCh1FastResp[j]->GetMaximum()*1.05);
@@ -320,18 +332,18 @@ void PlotFromTree(TString configFile="configuration.txt", bool normalizeToArea=k
     if(profFallTimeCluSiz1[j]->GetMaximum()>profFallTimeCluSiz1[0]->GetMaximum()*0.9) profFallTimeCluSiz1[0]->SetMaximum(profFallTimeCluSiz1[j]->GetMaximum()*1.2);
     if(profFallTimeCluSizGt1[j]->GetMaximum()>profFallTimeCluSizGt1[0]->GetMaximum()*0.9) profFallTimeCluSizGt1[0]->SetMaximum(profFallTimeCluSizGt1[j]->GetMaximum()*1.2);
   
-    profAmplCh1[j]=hAmplCh1VsCluSiz[j]->ProfileX(Form("profAmplCh1%d",j));
-    profAmplCh1[j]->GetYaxis()->SetTitle("<Amplitude Ch1> (mV)");
+    profAmplTrigChan[j]=hAmplTrigChanVsCluSiz[j]->ProfileX(Form("profAmplTrigChan%d",j));
+    profAmplTrigChan[j]->GetYaxis()->SetTitle("<Amplitude TrigChan> (mV)");
     hCluTyp[j]->SetStats(0);
-    hAmplCh1VsCluSiz[j]->SetStats(0);
-    profAmplCh1[j]->SetLineColor(cols[j]);
-    profAmplCh1[j]->SetLineWidth(2);
-    profAmplCh1[j]->SetStats(0);
+    hAmplTrigChanVsCluSiz[j]->SetStats(0);
+    profAmplTrigChan[j]->SetLineColor(cols[j]);
+    profAmplTrigChan[j]->SetLineWidth(2);
+    profAmplTrigChan[j]->SetStats(0);
     if(hTotAmpl[j]->GetMaximum()>hTotAmpl[0]->GetMaximum()) hTotAmpl[0]->SetMaximum(hTotAmpl[j]->GetMaximum()*1.05);
     if(hCluTyp[j]->GetMaximum()>hCluTyp[0]->GetMaximum()) hCluTyp[0]->SetMaximum(hCluTyp[j]->GetMaximum()*1.05);
     if(hCluSiz[j]->GetMaximum()>hCluSiz[0]->GetMaximum()) hCluSiz[0]->SetMaximum(hCluSiz[j]->GetMaximum()*1.05);
     if(hCluSizFastResp[j]->GetMaximum()>hCluSizFastResp[0]->GetMaximum()) hCluSizFastResp[0]->SetMaximum(hCluSizFastResp[j]->GetMaximum()*1.05);
-    if(profAmplCh1[j]->GetMaximum()>profAmplCh1[0]->GetMaximum()*0.9) profAmplCh1[0]->SetMaximum(profAmplCh1[j]->GetMaximum()*1.1);
+    if(profAmplTrigChan[j]->GetMaximum()>profAmplTrigChan[0]->GetMaximum()*0.9) profAmplTrigChan[0]->SetMaximum(profAmplTrigChan[j]->GetMaximum()*1.1);
 
   }
 
@@ -375,8 +387,8 @@ void PlotFromTree(TString configFile="configuration.txt", bool normalizeToArea=k
   }
   c1->cd(4);
   gPad->SetLogz();
-  hFallTimeCh1VsAmplCh1[0]->Draw("box");
-  for(int j=1; j<nFiles; j++) hFallTimeCh1VsAmplCh1[j]->Draw("same,box");
+  hFallTimeTrigChanVsAmplTrigChan[0]->Draw("box");
+  for(int j=1; j<nFiles; j++) hFallTimeTrigChanVsAmplTrigChan[j]->Draw("same,box");
   c1->cd(5);
   profFallTime[0]->Draw("");
   for(int j=1; j<nFiles; j++) profFallTime[j]->Draw("same");
@@ -414,9 +426,7 @@ void PlotFromTree(TString configFile="configuration.txt", bool normalizeToArea=k
   for(int j=0; j<nFiles; j++){
     if(j==0) hFallTime[j]->Draw("histo");
     else hFallTime[j]->Draw("histo,sames");
-    double cnt04=hFallTime[j]->Integral(1,hFallTime[j]->GetXaxis()->FindBin(0.3999));
-    double cntall=hFallTime[j]->GetEntries();
-    TLatex* tfrach=new TLatex(0.5,0.72-0.08*j,Form("%.0f/%.0f=%.3f",cnt04,cntall,cnt04/cntall));
+    TLatex* tfrach=new TLatex(0.5,0.72-0.08*j,Form("%.0f/%.0f=%.3f",cntFT04[j],cntFTall[j],cntFT04[j]/cntFTall[j]));
     tfrach->SetNDC();
     tfrach->SetTextColor(cols[j]);
     tfrach->SetTextFont(43);
@@ -435,25 +445,23 @@ void PlotFromTree(TString configFile="configuration.txt", bool normalizeToArea=k
   tfrac->SetTextSize(20);
   tfrac->Draw();
   c2->cd(4);
-  hAmplCh1VsCluSiz[0]->Draw("box");
-  for(int j=1; j<nFiles; j++) hAmplCh1VsCluSiz[j]->Draw("same,box");
+  hAmplTrigChanVsCluSiz[0]->Draw("box");
+  for(int j=1; j<nFiles; j++) hAmplTrigChanVsCluSiz[j]->Draw("same,box");
   c2->cd(5);
-  profAmplCh1[0]->Draw("");
-  for(int j=1; j<nFiles; j++) profAmplCh1[j]->Draw("same");
+  profAmplTrigChan[0]->Draw("");
+  for(int j=1; j<nFiles; j++) profAmplTrigChan[j]->Draw("same");
   c2->cd(6);
   for(int j=0; j<nFiles; j++){
-    if(j==0) hFallTimeCh1CluSiz1[j]->Draw("histo");
-    else hFallTimeCh1CluSiz1[j]->Draw("histo,sames");
-    double cnt04=hFallTimeCh1CluSiz1[j]->Integral(1,hFallTimeCh1CluSiz1[j]->GetXaxis()->FindBin(0.3999));
-    double cntall=hFallTimeCh1CluSiz1[j]->GetEntries();
-    TLatex* tfrach=new TLatex(0.5,0.72-0.08*j,Form("%.0f/%.0f=%.3f",cnt04,cntall,cnt04/cntall));
+    if(j==0) hFallTimeTrigChanCluSiz1[j]->Draw("histo");
+    else hFallTimeTrigChanCluSiz1[j]->Draw("histo,sames");
+    TLatex* tfrach=new TLatex(0.5,0.72-0.08*j,Form("%.0f/%.0f=%.3f",cnt04[j],cntall[j],cnt04[j]/cntall[j]));
     tfrach->SetNDC();
     tfrach->SetTextColor(cols[j]);
     tfrach->SetTextFont(43);
     tfrach->SetTextSize(20);
     tfrach->Draw();
     gPad->Update();
-    TPaveStats *st=(TPaveStats*)hFallTimeCh1CluSiz1[j]->GetListOfFunctions()->FindObject("stats");
+    TPaveStats *st=(TPaveStats*)hFallTimeTrigChanCluSiz1[j]->GetListOfFunctions()->FindObject("stats");
     st->SetY1NDC(0.77-0.2*j);
     st->SetY2NDC(0.96-0.2*j);
     st->SetTextColor(hTotAmpl[j]->GetLineColor());
@@ -624,9 +632,9 @@ void PlotFromTree(TString configFile="configuration.txt", bool normalizeToArea=k
   c5->Divide(nFiles+1,2);
   for(int j=0; j<nFiles; j++){
     c5->cd(j+1);
-    hFallTimeCh1VsAmplCh1CluSiz1[j]->Draw("colz");
+    hFallTimeTrigChanVsAmplTrigChanCluSiz1[j]->Draw("colz");
     c5->cd(j+2+nFiles);
-    hFallTimeCh1VsAmplCh1CluSizGt1[j]->Draw("colz");
+    hFallTimeTrigChanVsAmplTrigChanCluSizGt1[j]->Draw("colz");
   }
   c5->cd(nFiles+1);
   profFallTimeCluSiz1[0]->SetTitle("");
