@@ -60,8 +60,8 @@ rm = pyvisa.ResourceManager()
 scope = rm.open_resource('TCPIP0::193.205.66.32::inst0::INSTR',
                          resource_pyclass=MessageBasedResource)
 
-# Set timeout (ms: 200 s at least for radioactive source op.) and clear buffers
-scope.timeout = 200000
+# Set timeout in ms (1500 s for radioactive source op.) and clear buffers
+scope.timeout = 1500000
 scope.clear()
 
 # Remove comm header from scope answers
