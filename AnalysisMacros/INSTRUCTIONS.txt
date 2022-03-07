@@ -8,7 +8,9 @@ ORDER OF COMPILATION/EXECUTION:
 1) 	.L ConvertTxtToRoot.c+
 	ConvertTxtToRoot("FILE_NAME.txt")
 
-FILE_NAME.txt is the name of the file containing the signal coordinates (only the y-axis (Tension) values are written, the corresponding x-axis (Time) valuse are evaluated knowing the number of divisions for the time scale). This is done for the signal of each channel and each detected event.
+FILE_NAME.txt is the name of the file containing the signal coordinates (only the y-axis (Tension) values are written, 
+the corresponding x-axis (Time) valuse are evaluated knowing the number of divisions for the time scale). 
+This is done for the signal of each channel and each detected event.
 
 The macro converts the txt file into a root readable file with the same name, but with the .root extension
 
@@ -45,11 +47,3 @@ e.g. ("configuration.txt")
 APTS06_Vbb-1p2V_WalterConfig_TrgJ10_20220304_TTree.root; J10 ; 2 ; APTS06-J10
 APTS03_Vbb-1p2V_WalterConfig_TrgJ10_20220301_TTree.root; J10 ; 2 ; APTS03-J10
 APTS10_Vbb-1p2V_WalterConfig_TrgJ10_20220303_TTree.root; J10 ; 2 ; APTS10-J10
-
-
-
-
-
-
-
-
