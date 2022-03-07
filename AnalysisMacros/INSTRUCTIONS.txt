@@ -1,0 +1,55 @@
+ORDER OF COMPILATION/EXECUTION:
+
+1- ConvertTxtToRoot.C
+2- ProcessFile.C
+3- StabilityChecksFromTree.C
+4- PlotFromTree.C
+
+1) 	.L ConvertTxtToRoot.c+
+	ConvertTxtToRoot("FILE_NAME.txt")
+
+FILE_NAME.txt is the name of the file containing the signal coordinates (only the y-axis (Tension) values are written, the corresponding x-axis (Time) valuse are evaluated knowing the number of divisions for the time scale). This is done for the signal of each channel and each detected event.
+
+The macro converts the txt file into a root readable file with the same name, but with the .root extension
+
+2)	.L ProcessFile.c+
+	ProcessFile("FILE_NAME.root")
+
+FILE_NAME.root is the name of the file converted by "ConvertTxtToRoot()"
+
+The macro converts the root file into TTrees named "FILE_NAME_TTree.root"	
+
+3)	.L StabilityCheckFromTree.c+
+	StabilityCheckFromTree("FILE_NAME_TTree.root", TRIGGER_CHANNEL)
+
+TRIGGER_CHANNEL is the channel (1, 2, 3 or 4) on which we are triggering. They correspond to the different pixel connected.
+In the current setup: Ch1 <-> J5; Ch2 <-> J6; Ch3 <-> J10; Ch4 <-> J9
+
+Plots the values of Amplitude, Falltime and Baseline for each single event and the time between events.
+
+4) 	.L PlotFromTree.c+
+	PlotFromTree()
+
+The macro uses an additional txt file ("configuration.txt") to know what files to analize. The sintax of the config file is:
+
+line1:	number_of_analyzed_files(max 5)		Triggered_channel(J5, J6; J9 or J10)	
+line2:	FILE_NAME_TTree.root;	Triggered_channel;	Color(number between 1 and 10);		APTS##-J##
+line3:	SAME AS LINE 2 BUT FOR FURTHER ANALYZED FILES
+.
+.
+.
+LineN:	SAME AS LINE 2 BUT FOR FURTHER ANALYZED FILES
+
+e.g. ("configuration.txt")
+3 J10
+APTS06_Vbb-1p2V_WalterConfig_TrgJ10_20220304_TTree.root; J10 ; 2 ; APTS06-J10
+APTS03_Vbb-1p2V_WalterConfig_TrgJ10_20220301_TTree.root; J10 ; 2 ; APTS03-J10
+APTS10_Vbb-1p2V_WalterConfig_TrgJ10_20220303_TTree.root; J10 ; 2 ; APTS10-J10
+
+
+
+
+
+
+
+
