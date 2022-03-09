@@ -296,7 +296,7 @@ void FindEdge(TGraph* gcount,TGraph* gnegder, TGraph* gder, double& endplateau, 
 }
 
 
-void ProcessEvent(TGraph* g, TGraph* glong, double params[10], bool plot){
+void ProcessEvent(TGraph* g, TGraph* glong, double params[20], bool plot){
 
   TGraph* gs=Smooth(g,10);
   gs->GetXaxis()->SetTitle(g->GetXaxis()->GetTitle());
@@ -394,8 +394,9 @@ void ProcessEvent(TGraph* g, TGraph* glong, double params[10], bool plot){
     xcross=(basel2-q)/slope;
   }
 
-  params[7]=expConst;
-  params[8]=xcross;
+  params[7]=basel2;
+  params[8]=expConst;
+  params[9]=xcross;
   
   if(!plot){
     delete gs;
@@ -513,10 +514,10 @@ void ProcessEvent(TString filnam, int ev, int chan){
 
 void ProcessFile(TString filnam){
 
-  const int nParsPerChan=9;
+  const int nParsPerChan=10;
   TString varNames[nParsPerChan]={"Baseline","MinLevel","SignalAmpl","t10","t50","t90",
-				  "FallTime","RecovTimeExpo","RecovTimeLin"};
-  double paramschan[10];
+				  "FallTime","BaselCoarse","RecovTimeExpo","RecovTimeLin"};
+  double paramschan[20];
   double params[4*nParsPerChan];
   int ev;
   ulong timest;
