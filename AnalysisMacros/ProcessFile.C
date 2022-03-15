@@ -512,7 +512,7 @@ void ProcessEvent(TString filnam, int ev, int chan){
   ProcessEvent(g,glong,params,kTRUE);
 }
 
-void ProcessFile(TString filnam){
+void ProcessFile(TString filnam, int maxEv=999999){
 
   const int nParsPerChan=10;
   TString varNames[nParsPerChan]={"Baseline","MinLevel","SignalAmpl","t10","t50","t90",
@@ -541,15 +541,31 @@ void ProcessFile(TString filnam){
   int period;
   int lastev=0;
   int chan;
-  for(Int_t j=0; j<nkeys; j++){
-    TKey* k=(TKey*)lkeys->At(j);
-    TString cname=k->GetClassName();
-    TString oname=k->GetName();
-    if(cname=="TGraph"){
-      sscanf(oname.Data(),"grEv%dChanC%dsamp%d",&ev,&chan,&period);
-      if(ev>lastev) lastev=ev;
+  printf("----- Number of keys in file = %d\n",nkeys);
+//   for(Int_t j=0; j<nkeys; j++){
+//     TKey* k=(TKey*)lkeys->At(j);
+//     TString cname=k->GetClassName();
+//     TString oname=k->GetName();
+//     if(cname=="TGraph"){
+//       sscanf(oname.Data(),"grEv%dChanC%dsamp%d",&ev,&chan,&period);
+//       if(ev>lastev){ 
+//         lastev=ev;
+// 	if(lastev%1000==0) printf("..... %d events already found\n",lastev);
+//       }
+//     }
+//     delete k;
+//   }
+  TKey* k=(TKey*)lkeys->At(nkeys-1);
+  TString cname=k->GetClassName();
+  TString oname=k->GetName();
+  if(cname=="TGraph"){
+    sscanf(oname.Data(),"grEv%dChanC%dsamp%d",&ev,&chan,&period);
+    if(ev>lastev){ 
+      lastev=ev;
     }
-  }
+  }  
+  printf("----- Number of events = %d\n",lastev);
+  if(lastev>maxEv) lastev=maxEv;
 
   int dum;
   char ddum[2];
@@ -565,6 +581,8 @@ void ProcessFile(TString filnam){
       ev=iev;
       ProcessEvent(g,glong,paramschan,kFALSE);
       for(int ivar=0; ivar<nParsPerChan; ivar++) params[ivar+(ichan-1)*nParsPerChan]=paramschan[ivar];
+      delete g;
+      delete glong;
     }
     outTree->Fill();
   }
