@@ -27,6 +27,7 @@ TH1F* hAmplCh1[maxFiles];
 TH1F* hAmplCh2[maxFiles];
 TH1F* hAmplCh3[maxFiles];
 TH1F* hAmplCh4[maxFiles];
+TH1F* hMaxSigPix[maxFiles];
 TH1F* hRecoTimeTrigChan[maxFiles];
 TH1F* hRecoTimeCh1[maxFiles];
 TH1F* hRecoTimeCh2[maxFiles];
@@ -86,6 +87,23 @@ void FormatHistos(TObjArray* arrHisto, int theColor){
   }
 }
 
+void WriteHistos(TObjArray* arrHisto, TString filnam){
+  TFile* outf=new TFile(filnam.Data(),"recreate");
+  int nHist=arrHisto->GetEntries();
+  for(int jh=0; jh<nHist; jh++){
+    TString cname=((TObject*)arrHisto->At(jh))->ClassName();
+    if(cname.Contains("TH1")){
+      TH1* h=(TH1*)arrHisto->At(jh);
+      h->Write();
+    }else if(cname.Contains("TH2")){
+      TH2* h=(TH2*)arrHisto->At(jh);
+      h->Write();
+    }
+  }
+  outf->Close();
+  delete outf;
+}
+
 void NormalizeHistos(TObjArray* arrHisto){
   int nHist=arrHisto->GetEntries();
   for(int jh=0; jh<nHist; jh++){
@@ -93,7 +111,7 @@ void NormalizeHistos(TObjArray* arrHisto){
     if(cname.Contains("TH1")){
       TH1* h=(TH1*)arrHisto->At(jh);
       TString hname=h->GetName();
-      if(hname.Contains("CluSiz") || hname.Contains("CluTyp") ) continue;
+      if(hname.Contains("CluSiz") || hname.Contains("CluTyp") || hname.Contains("hMaxSigPix")) continue;
       double tot=h->Integral();
       if(tot>0){
 	h->Scale(1./tot);
@@ -152,6 +170,7 @@ void SetMaxima(int nfils){
     SetHistoMaximum(hDeltaTime42[j],hDeltaTime42[0]);
     SetHistoMaximum(hDeltaTime43[j],hDeltaTime43[0]);
     SetHistoMaximum(hTotAmpl[j],hTotAmpl[0]);
+    SetHistoMaximum(hMaxSigPix[j],hMaxSigPix[0]);
     SetHistoMaximum(hCluTyp[j],hCluTyp[0]);
     SetHistoMaximum(hCluSiz[j],hCluSiz[0]);
     SetHistoMaximum(hCluSizFastResp[j],hCluSizFastResp[0]);
@@ -241,11 +260,12 @@ void FillHistosFromTree(TFile* f, int jfil, int iTrigChan){
 	  maxsigpix=k;
 	}
       }
-    }    
+    }
     if((iTrigChan>=0 && amplVec[iTrigChan]>0) || (iTrigChan<0 && clusiz>0)){
       hCluSiz[jfil]->Fill(clusiz);
       hCluTyp[jfil]->Fill(clutyp);
       hTotAmpl[jfil]->Fill(totampl);
+      hMaxSigPix[jfil]->Fill(maxsigpix+1);
       hAmplMaxSigPixVsCluSiz[jfil]->Fill(clusiz,amplVec[maxsigpix]*1000);
       if(iTrigChan>=0) hAmplTrigChanVsCluSiz[jfil]->Fill(clusiz,amplVec[iTrigChan]*1000);
       hFallTimeMaxSigPix[jfil]->Fill(fallTimeVec[maxsigpix]/1000.);
@@ -297,6 +317,9 @@ void FillHistosFromTree(TFile* f, int jfil, int iTrigChan){
   }
   for(int k=1; k<=hCluSiz[jfil]->GetNbinsX(); k++){
     hCluSiz[jfil]->SetBinContent(k, hCluSiz[jfil]->GetBinContent(k)/hCluSiz[jfil]->GetEntries());
+  }
+  for(int k=1; k<=hMaxSigPix[jfil]->GetNbinsX(); k++){
+    hMaxSigPix[jfil]->SetBinContent(k, hMaxSigPix[jfil]->GetBinContent(k)/hMaxSigPix[jfil]->GetEntries());
   }
   hCluSizFastResp[jfil]->Scale(1/hAmplCh1FastResp[jfil]->GetEntries());
   for(int k=1; k<=hCluTyp[jfil]->GetNbinsX(); k++){
@@ -401,6 +424,7 @@ void PlotFromTree(TString configFile="configuration.txt", bool normalizeToArea=k
     hFallTimeMaxSigPixVsAmplMaxSigPixCluSiz1[j]->SetTitle(Form("%s Cluster size = 1",legEntry[j].Data()));
     hFallTimeMaxSigPixVsAmplMaxSigPixCluSizGt1[j]=new TH2F(Form("hFallTimeMaxSigPixVsAmplMaxSigPixCluSizGt1_%d",j)," Cluster size > 1  ; Signal Amplitude MaxSigPix (mV) ; Fall Time MaxSigPix (ns) ; Entries",50,0.,100.,100,0.,10.);
     hFallTimeMaxSigPixVsAmplMaxSigPixCluSizGt1[j]->SetTitle(Form("%s Cluster size > 1",legEntry[j].Data()));
+    hMaxSigPix[j]=new TH1F(Form("hMaxSigPix_%d",j)," ;  Pixel with signal peak ; Fraction of events",4,0.5,4.5);
     hTotAmpl[j]=new TH1F(Form("hTotAmpl_%d",j)," ; Signal Amplitude 4-pixels (mV) ; Entries",100,0.,100.);
     hCluSiz[j]=new TH1F(Form("hCluSiz_%d",j)," ; Cluster Size ; Fraction of events",5,-0.5,4.5);
     hCluTyp[j]=new TH1F(Form("hCluTyp_%d",j)," ; Cluster Shape ; Fraction of events",16,-0.5,15.5);
@@ -462,6 +486,7 @@ void PlotFromTree(TString configFile="configuration.txt", bool normalizeToArea=k
     arrHisto->AddAtAndExpand(hFallTimeMaxSigPixVsAmplMaxSigPixCluSiz1[j],indexh++);
     arrHisto->AddAtAndExpand(hFallTimeMaxSigPixVsAmplMaxSigPixCluSizGt1[j],indexh++);
     arrHisto->AddAtAndExpand(hTotAmpl[j],indexh++);
+    arrHisto->AddAtAndExpand(hMaxSigPix[j],indexh++);
     arrHisto->AddAtAndExpand(hCluSiz[j],indexh++);
     arrHisto->AddAtAndExpand(hCluTyp[j],indexh++);
     arrHisto->AddAtAndExpand(hAmplTrigChanVsCluSiz[j],indexh++);
@@ -486,8 +511,11 @@ void PlotFromTree(TString configFile="configuration.txt", bool normalizeToArea=k
     arrHisto->AddAtAndExpand(hDeltaTime43[j],indexh++);
  
     TFile* f=new TFile(fileNames[j].Data());
-    fileNames[j].ReplaceAll("_TTree.root","");
     FillHistosFromTree(f,j,jTrigChan[j]-1);
+    TString outHisFilNam=fileNames[j];
+    outHisFilNam.ReplaceAll("_TTree.root","_Histos.root");
+    WriteHistos(arrHisto,outHisFilNam);
+    fileNames[j].ReplaceAll("_TTree.root","");
     FormatHistos(arrHisto,cols[j]);
     arrHisto->Clear();
     profFallTime[j]=hFallTimeTrigChanVsAmplTrigChan[j]->ProfileX(Form("profFallTimeVsAmpl%d",j));
@@ -565,6 +593,17 @@ void PlotFromTree(TString configFile="configuration.txt", bool normalizeToArea=k
     st->SetTextColor(hAmplCh2[j]->GetLineColor());
     gPad->Modified();
   }
+  cA->cd(3);
+  for(int j=0; j<nFiles; j++){
+    if(j==0) hMaxSigPix[j]->Draw("histo");
+    else hMaxSigPix[j]->Draw("histo,sames");
+    gPad->Update();    
+    TPaveStats *st=(TPaveStats*)hMaxSigPix[j]->GetListOfFunctions()->FindObject("stats");
+    st->SetY1NDC(0.77-0.2*j);
+    st->SetY2NDC(0.96-0.2*j);
+    st->SetTextColor(hMaxSigPix[j]->GetLineColor());
+    gPad->Modified();
+  }  
   cA->cd(5);
   for(int j=0; j<nFiles; j++){
     if(j==0) hAmplCh3[j]->Draw("histo");
