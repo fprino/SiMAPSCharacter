@@ -27,6 +27,16 @@ void DoFit(TH1F* h, TF1* funcKa, TF1* funcKb){
   }
   funcKb->SetParameters(h->GetBinContent(peakb),h->GetBinCenter(peakb),funcKa->GetParameter(3));
   h->Fit(funcKb,"","",funcKa->GetParameter(2)+3*funcKa->GetParameter(3),100);
+  return;
+}
+
+void ComputeLinearParams(TGraphErrors* g, double& slop, double& cnst){
+  double x1,y1,x2,y2;
+  g->GetPoint(0,x1,y1);
+  g->GetPoint(1,x2,y2);
+  slop=(y2-y1)/(x2-x1);
+  cnst=y1-slop*x1;
+  return;
 }
 
 void FitKab(TString filename="APTS10_Vbb-4V_WaltConf_trgOR_20220311_TTree.root", double maxFallTime=400){
@@ -97,6 +107,12 @@ void FitKab(TString filename="APTS10_Vbb-4V_WaltConf_trgOR_20220311_TTree.root",
     gAfast[k]->SetMarkerStyle(47);
   }
   
+  double slopeAll[4];  
+  double constAll[4];
+  double slopeClu1[4];  
+  double constClu1[4];
+  double slopeFast[4];  
+  double constFast[4];
   
   TCanvas* cA = new TCanvas("cA","Amplitudes",1650,900);
   cA->Divide(2,2);
@@ -110,6 +126,7 @@ void FitKab(TString filename="APTS10_Vbb-4V_WaltConf_trgOR_20220311_TTree.root",
     gAall[k]->SetPointError(0,0.,funcKa->GetParError(2));
     gAall[k]->SetPoint(1,eB,funcKb->GetParameter(1));
     gAall[k]->SetPointError(1,0.,funcKb->GetParError(1));
+    ComputeLinearParams(gAall[k],slopeAll[k],constAll[k]);
   }
   cA->SaveAs("Fit-Kab-AllClu.png");
   
@@ -125,6 +142,7 @@ void FitKab(TString filename="APTS10_Vbb-4V_WaltConf_trgOR_20220311_TTree.root",
     gAclu1[k]->SetPointError(0,0.,funcKa->GetParError(2));
     gAclu1[k]->SetPoint(1,eB,funcKb->GetParameter(1));
     gAclu1[k]->SetPointError(1,0.,funcKb->GetParError(1));
+    ComputeLinearParams(gAclu1[k],slopeClu1[k],constClu1[k]);
   }
   c1->SaveAs("Fit-Kab-CluSiz1.png");
 
@@ -140,6 +158,7 @@ void FitKab(TString filename="APTS10_Vbb-4V_WaltConf_trgOR_20220311_TTree.root",
     gAfast[k]->SetPointError(0,0.,funcKa->GetParError(2));
     gAfast[k]->SetPoint(1,eB,funcKb->GetParameter(1));
     gAfast[k]->SetPointError(1,0.,funcKb->GetParError(1));
+    ComputeLinearParams(gAfast[k],slopeFast[k],constFast[k]);
   }
   cF->SaveAs("Fit-Kab-Fast.png");
 
@@ -159,4 +178,9 @@ void FitKab(TString filename="APTS10_Vbb-4V_WaltConf_trgOR_20220311_TTree.root",
   }
   leg->Draw();
   cen->SaveAs("PeakCalib.png");
+
+  printf("Slopes (mV/keV)\n");
+  for(int k=0; k<4; k++){
+    printf("Pixel %d:  all clu=%f    clusiz1=%f    fast=%f\n",k+1,slopeAll[k],slopeClu1[k],slopeFast[k]);
+  }
 }
